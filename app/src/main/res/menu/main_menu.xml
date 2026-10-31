@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_refresh"
+        android:title="@string/menu_refresh" />
+    <item
+        android:id="@+id/action_browser"
+        android:title="@string/menu_browser" />
+    <item
+        android:id="@+id/action_lan_url"
+        android:title="@string/menu_lan_url" />
+    <item
+        android:id="@+id/action_copy_key"
+        android:title="@string/menu_copy_key" />
+    <item
+        android:id="@+id/action_settings"
+        android:title="@string/menu_settings" />
+    <item
+        android:id="@+id/action_restart"
+        android:title="@string/menu_restart" />
+    <item
+        android:id="@+id/action_console_chat"
+        android:title="@string/menu_console_chat" />
+    <item
+        android:id="@+id/action_thinking"
+        android:title="@string/menu_thinking" />
+    <item
+        android:id="@+id/action_console"
+        android:title="@string/menu_console" />
+    <item
+        android:id="@+id/action_logs"
+        android:title="@string/menu_logs" />
+    <item
+        android:id="@+id/action_battery"
+        android:title="@string/menu_battery" />
+    <item
+        android:id="@+id/action_about"
+        android:title="@string/menu_about" />
+</menu>
