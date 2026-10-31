@@ -1,0 +1,111 @@
+plugins {
+    id 'com.android.application'
+    id 'com.chaquo.python'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
+
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file("keystore.properties")
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    namespace 'com.fujiang.wb2api'
+    compileSdk 36
+    buildToolsVersion "36.0.0"
+
+    defaultConfig {
+        applicationId "com.fujiang.wb2api"
+        minSdk 24
+        targetSdk 34
+        versionCode 100
+        versionName "1.8.0-app82"
+
+        ndk {
+            // 只打 arm64：手机基本都是 arm64，包体小一半
+            abiFilters "arm64-v8a"
+        }
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+        compose true
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        buildPython "/usr/bin/python3"
+        // 这个网关零第三方依赖，纯标准库，所以 pip 留空
+        pip {}
+    }
+}
+
+dependencies {
+    // 原生外壳换成 Jetpack Compose + Material 3。
+    // 版本组合照 app15 那次能编译通过的那一套（AGP 8.5.2 + Kotlin 2.0.21）。
+    // material3 不钉版本，交给 BOM 取稳定版 —— 钉 alpha 会要求更高 AGP。
+    implementation platform('androidx.compose:compose-bom:2025.12.00')
+    implementation 'androidx.activity:activity-compose:1.10.1'
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'
+
+    // 液体玻璃 / 背景模糊。底栏要 1:1 复刻 NPatch-miuix 的 FloatingGlassBottomBar，
+    // 那个实现整套建立在它上面：layerBackdrop / drawBackdrop / blur / lens /
+    // vibrancy / Highlight / Shadow / InnerShadow 全在这里。
+    // 没有它就做不出真玻璃，只能拿渐变凑 —— 那就是之前"不好看"的原因。
+    implementation 'io.github.kyant0:backdrop:1.0.6'
+}

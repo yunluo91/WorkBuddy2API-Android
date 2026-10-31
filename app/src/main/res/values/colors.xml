@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FF0E1116</color>
+    <!-- 自适应图标底色：取源图四角的纯黑，和图案无缝衔接 -->
+    <color name="icon_bg">#FF000000</color>
+    <color name="card">#FF161B22</color>
+    <color name="accent">#FF0DBD8B</color>
+    <color name="text">#FFE6EDF3</color>
+    <color name="muted">#FF8B949E</color>
+    <color name="danger">#FFF85149</color>
+</resources>

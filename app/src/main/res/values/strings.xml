@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WorkBuddy2API</string>
+    <string name="boot_title">WorkBuddy2API</string>
+    <string name="boot_sub">多账号反代网关 · 手机版</string>
+    <string name="btn_refresh">刷新 / 菜单</string>
+    <string name="btn_logs">运行日志</string>
+    <string name="menu_refresh">刷新页面</string>
+    <string name="menu_browser">用系统浏览器打开</string>
+    <string name="menu_lan_url">复制局域网地址</string>
+    <string name="menu_copy_key">复制 API Key</string>
+    <string name="menu_settings">设置</string>
+    <string name="menu_restart">重启服务</string>
+    <string name="menu_console_chat">内置控制台（对话 / 终端）</string>
+    <string name="tab_board">看板</string>
+    <string name="tab_console">控制台</string>
+    <string name="tab_debug">调试台</string>
+    <string name="menu_thinking">思考调试台</string>
+    <string name="menu_console">浏览器打开运行日志</string>
+    <string name="menu_logs">查看运行日志</string>
+    <string name="menu_battery">电池优化白名单</string>
+    <string name="menu_about">关于</string>
+    <string name="notif_channel">网关服务</string>
+    <string name="notif_title">WorkBuddy2API 运行中</string>
+    <string name="notif_stop">停止</string>
+</resources>
