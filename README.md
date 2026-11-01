@@ -12,6 +12,14 @@
   <sub>基于 <a href="https://github.com/ardeyouxipianyi/workbuddy2api-hub">ardeyouxipianyi/workbuddy2api-hub</a>　·　MIT</sub>
 </p>
 
+<p align="center">
+  <a href="https://github.com/yunluoliu50-cell/WorkBuddy2API-Android/releases/latest"><b>⬇ 下载 APK</b></a>
+  　·　
+  <a href="使用说明.md">使用说明</a>
+  　·　
+  <a href="https://github.com/yunluoliu50-cell/WorkBuddy2API-Android/releases">所有版本</a>
+</p>
+
 ---
 
 把 Python 写的 OpenAI 兼容网关塞进一个 Android APK 里跑。
