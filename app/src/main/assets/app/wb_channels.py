@@ -608,6 +608,95 @@ def describe(rows):
 
 # ---------------------------------------------------------------- 转发
 
+# ---------------------------------------------------------------- 降级与冷却
+
+# {渠道 id: 冷却到什么时候（epoch 秒）}
+_COOLDOWN = {}
+
+# 429 / 5xx 属于「这家现在不行，换一家试试」，其余的错误不降级
+_COOLDOWN_SECONDS = 120
+
+
+def _classify_error(exc):
+    """把异常分成 rate / server / other。只有前两种触发降级。"""
+    code = getattr(exc, "code", None)
+    if code == 429:
+        return "rate"
+    if isinstance(code, int) and 500 <= code < 600:
+        return "server"
+    return "other"
+
+
+def _mark_cooldown(cid, seconds=_COOLDOWN_SECONDS):
+    _COOLDOWN[cid] = time.time() + seconds
+
+
+def _in_cooldown(cid):
+    until = _COOLDOWN.get(cid) or 0
+    if until <= time.time():
+        _COOLDOWN.pop(cid, None)
+        return False
+    return True
+
+
+def cooldowns():
+    """给控制台看：现在哪些渠道在冷却。"""
+    now = time.time()
+    return [{"id": k, "left": int(v - now)} for k, v in _COOLDOWN.items() if v > now]
+
+
+def _candidates(rows, chan, model):
+    """同一个裸模型名，还能走哪些渠道（当前渠道排第一）。
+
+    只认静态清单里声明过这个模型的渠道 —— 没声明的不能瞎猜，
+    否则会把请求发到根本听不懂这个名字的上游。
+    """
+    out = [chan]
+    for r in rows:
+        if r.get("id") == chan.get("id") or not r.get("enabled"):
+            continue
+        if any((m or {}).get("id") == model for m in (r.get("models") or [])):
+            out.append(r)
+    return out
+
+
+def forward_with_fallback(rows, chan, model, payload, timeout=600):
+    """按候选链逐个尝试。返回 (响应对象, 实际用的渠道)。
+
+    策略抄 freellmapi：429 / 5xx → 那家进冷却 → 换下一家重试。
+    只在这一步失败时降级：一旦响应头到手（开始流式），出错就不再重试，
+    因为客户端已经收到部分内容了，重发会造成重复。
+    """
+    last = None
+    tried = []
+    for cand in _candidates(rows, chan, model):
+        cid = cand.get("id")
+        if _in_cooldown(cid):
+            tried.append("%s(冷却中)" % cid)
+            continue
+        try:
+            resp = forward(cand, model, payload, timeout=timeout)
+            return resp, cand
+        except urllib.error.HTTPError as exc:
+            kind = _classify_error(exc)
+            tried.append("%s(%s)" % (cid, exc.code))
+            if kind in ("rate", "server"):
+                _mark_cooldown(cid)
+            last = exc
+            continue
+        except Exception as exc:
+            tried.append("%s(%r)" % (cid, exc))
+            last = exc
+            continue
+    if last is not None:
+        try:
+            setattr(last, "tried", tried)
+        except Exception:
+            pass
+        raise last
+    raise RuntimeError("所有候选渠道都在冷却：%s" % ", ".join(tried))
+
+
 def forward(chan, model, payload, timeout=600):
     """把请求转发给渠道，返回未读取的 HTTP 响应对象（调用方自己流式读）。
 

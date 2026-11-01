@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""WorkBuddy2API 手机版 · 启动器 + 思考调试台
+"""综合API网关 · 启动器 + 思考调试台
 
 这个文件不是上游 workbuddy2api-hub 的东西，是手机壳（com.yunluo.wb2api）自己加的，
 放在 assets/app/ 里，每次启动由 PyRunner 用 runpy 跑起来，再由它去跑上游的 wb_proxy.py。
@@ -325,7 +325,7 @@ def _watch():
 def _page():
     page = """<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>思考调试台 · WorkBuddy2API</title>
+<title>思考调试台 · 综合API网关</title>
 <style>
 /* WB-THINK-UI
    原来这页是四张圆角大卡片 + 竖排单选卡片 + 大段说明文字，

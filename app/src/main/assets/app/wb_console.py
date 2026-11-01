@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""WorkBuddy2API 手机版 · 内置控制台（对话 + 终端）
+"""综合API网关 · 内置控制台（对话 + 终端）
 
 由 wb_boot.py 常驻起在 (网关端口 + 2)，跟思考调试台（端口 + 1）并排。
 所有出站请求都不发 HTTP，直接在同一个 Python 进程里调 wb_proxy 的函数，
@@ -1107,7 +1107,7 @@ def _call_opt(name):
 
 PAGE = r"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>控制台 · WorkBuddy2API</title>
+<title>控制台 · 综合API网关</title>
 <meta name="wb-token" content="__WB_CONSOLE_TOKEN__">
 <style>
 :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c232c;--line:#232a33;--fg:#e6edf3;
@@ -3106,6 +3106,8 @@ class Handler(BaseHTTPRequestHandler):
                     "channels": wb_channels.describe(rows),
                     "enabled": len(wb_channels.enabled(rows)),
                     "total": len(rows),
+                    # WB-CHANNELS 冷却表：429/5xx 后这家会暂时跳过
+                    "cooldowns": wb_channels.cooldowns(),
                 })
             except Exception as exc:
                 _json_send(self, 200, {"error": str(exc)})

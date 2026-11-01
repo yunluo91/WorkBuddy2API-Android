@@ -22588,7 +22588,16 @@ class Handler(BaseHTTPRequestHandler):
         也避免我们在中间猜错格式。
         """
         try:
-            upstream = wb_channels.forward(chan, model, payload)
+            # WB-CHANNELS 降级：429/5xx 时换下一家（抄 freemllmapi 的冷却策略）
+            rows = wb_channels.load(ACCOUNTS_DIR)
+            upstream, used = wb_channels.forward_with_fallback(rows, chan, model, payload)
+            if used.get("id") != chan.get("id"):
+                try:
+                    log("channel fallback: %s → %s (model=%s)"
+                        % (chan.get("id"), used.get("id"), model), level="WARN")
+                except Exception:
+                    pass
+            chan = used
         except urllib.error.HTTPError as exc:
             raw = b""
             try:
