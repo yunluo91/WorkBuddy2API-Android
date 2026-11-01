@@ -797,7 +797,7 @@ class MainActivity : ComponentActivity() {
             Spacer(Modifier.height(18.dp))
 
             Text(
-                text = "1　在浏览器中完成登录（若没有自动打开，点下面的按钮）",
+                text = "1　复制下面的链接，在浏览器里打开并完成登录",
                 fontSize = 13.sp,
                 color = WbMuted,
                 modifier = Modifier.fillMaxWidth(),
@@ -819,7 +819,7 @@ class MainActivity : ComponentActivity() {
                     .clickable { openInBrowser() }
                     .padding(horizontal = 18.dp, vertical = 11.dp)
             ) {
-                Text("打开登录页", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = WbAccent)
+                Text("用浏览器打开", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = WbAccent)
             }
 
             Spacer(Modifier.height(18.dp))
@@ -832,14 +832,41 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(10.dp))
-            SelectionContainer {
-                Text(
-                    text = loginWaitUrl,
-                    fontSize = 10.sp,
-                    color = WbMuted.copy(alpha = 0.7f),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            Spacer(Modifier.height(12.dp))
+            /* 链接本体：长按可选中复制，右边一个复制按钮 */
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .background(WbCard)
+                    .border(1.dp, WbLine, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SelectionContainer(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = loginWaitUrl,
+                        fontSize = 11.sp,
+                        color = WbAccent,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                        .background(WbAccent.copy(alpha = 0.16f))
+                        .clickable {
+                            val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                                    as android.content.ClipboardManager
+                            cm.setPrimaryClip(
+                                android.content.ClipData.newPlainText("login", loginWaitUrl)
+                            )
+                            loginWaitMsg = "链接已复制，去浏览器打开"
+                        }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text("复制", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = WbAccent)
+                }
             }
 
             Spacer(Modifier.weight(1f))
@@ -3789,12 +3816,9 @@ class MainActivity : ComponentActivity() {
                 loginWaitId = cid
                 loginWaitName = (name ?: cid).trim().ifEmpty { cid }
                 loginWaitUrl = u
-                loginWaitMsg = "已打开登录页，等待授权…（最长等待 10 分钟）"
-                try {
-                    startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(u)))
-                } catch (_: Throwable) {
-                    loginWaitMsg = "打不开浏览器，请手动复制下面的地址"
-                }
+                // WB-LINK-ONLY 用户要的是「把链接给我」，不是自动弹浏览器。
+                // 链接放页面上，长按可复制，也可以点「用浏览器打开」。
+                loginWaitMsg = "复制下面的链接，在浏览器里打开完成登录（最长等待 10 分钟）"
             }
         }
 
