@@ -291,6 +291,9 @@ class MainActivity : ComponentActivity() {
     private var channelLoginUrl by mutableStateOf("")
     private var channelLoginMsg by mutableStateOf("")
 
+    /** 看板的两个子页："panel" = 网关面板，"channels" = 渠道账号（登录/签到）。 */
+    private var boardSub by mutableStateOf("panel")
+
     /** WB-KEEPALIVE 设置页显示用的实时状态。 */
     private var batteryExemptState by mutableStateOf(false)
     private var notifAllowedState by mutableStateOf(true)
@@ -642,27 +645,79 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun BoardPane(holder: WebHolder) {
-        AndroidView(
-            factory = {
-                holder.web.also {
-                    // 跟 WebHolder 构造里那道是双保险
-                    it.layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
+        Column(Modifier.fillMaxSize()) {
+            /* WB-BOARD-SUB 看板两页
+               面板就是原来那个 dashboard.html；
+               渠道是账号型渠道的登录/签到页（复用控制台网页的 paneChannels）。
+               为什么挪到看板：JS 桥（WbBridge）只挂在这个 WebView 上，
+               「登录」按钮要靠桥打开 App 内的登录窗口。 */
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .height(38.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                    .background(WbBg)
+                    .border(
+                        1.dp, WbLine,
+                        androidx.compose.foundation.shape.RoundedCornerShape(999.dp)
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                for ((key, label) in listOf("panel" to "面板", "channels" to "渠道")) {
+                    val on = boardSub == key
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .padding(3.dp)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                            .background(if (on) WbCard2 else Color.Transparent)
+                            .clickable { boardSub = key }
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 13.sp,
+                            fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (on) WbAccent else WbMuted,
+                        )
+                    }
                 }
-            },
-            modifier = Modifier.fillMaxSize(),
-            update = { }
-        )
+            }
+
+            AndroidView(
+                factory = {
+                    holder.web.also {
+                        // 跟 WebHolder 构造里那道是双保险
+                        it.layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                update = { }
+            )
+        }
 
         // 必须等网关确认可用之后才 loadUrl。
         // 绑到 booting 上：booting 变 false 说明 healthy() 探到
         // /health 和 / 都 200，这时候端口一定在听。
-        LaunchedEffect(booting) {
+        LaunchedEffect(booting, boardSub) {
             web = holder.web
             if (booting) return@LaunchedEffect
-            if (holder.web.url == null) holder.web.loadUrl(loginUrl())
+            val target = if (boardSub == "channels") {
+                consoleUrl() + "?tab=channels"
+            } else {
+                loginUrl()
+            }
+            if (boardSub == "panel" && holder.web.url == null) {
+                holder.web.loadUrl(target)
+            } else if (boardSub == "channels") {
+                holder.web.loadUrl(target)
+            }
         }
     }
 
@@ -1124,7 +1179,6 @@ class MainActivity : ComponentActivity() {
                     "models" to "模型",
                     "keys" to "密钥",
                     "think" to "思考",
-                    "channels" to "渠道",
                 ),
                 selected = consoleSubView,
                 onSelect = { key ->
@@ -2650,7 +2704,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** 控制台 / 调试台 WebView。跟看板有两处不同：不缓存、不挂 JsBridge。 */
+    /** 控制台 / 调试台 WebView。跟看板有两处不同：不缓存、JS 桥只提供必要的几个方法。 */
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupToolWeb(w: WebView) {
         w.settings.apply {
@@ -2670,6 +2724,12 @@ class MainActivity : ComponentActivity() {
             userAgentString = userAgentString + " WB2API-App/1.0"
             setSafeBrowsingEnabled(false)
         }
+
+        /* WB-TOOL-BRIDGE 控制台网页也要桥：
+           思考页读/写「对话默认档位」走的是 WbBridge.getThinkLevel /
+           setThinkLevel。以前只有看板那个 WebView 注册了桥，那两个方法一直是空的。
+           注意必须挂在 WebView 上，不是 WebSettings —— 挂错地方编译能过但运行会崩。 */
+        w.addJavascriptInterface(JsBridge(), "WbBridge")
 
         // 跟看板一样：关掉滑过头。
         // 控制台的调用记录列表和控制台的终端输出都是长内容，
