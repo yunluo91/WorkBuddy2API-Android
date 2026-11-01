@@ -5,11 +5,11 @@
 <h1 align="center">WorkBuddy2API · 手机版</h1>
 
 <p align="center">
-  <sub>陨落[洛杉矶高级二改王] · <a href="https://github.com/yunluoliu50-cell">@yunluoliu50-cell</a></sub>
+  <sub>陨落[洛杉矶高级二改王] · <a href="https://github.com/yunluo91">@yunluo91</a></sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/yunluoliu50-cell/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.8.0--app100-0DBD8B?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.8.0--app100-0DBD8B?style=flat-square" alt="Release"></a>
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
@@ -18,11 +18,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yunluoliu50-cell/WorkBuddy2API-Android/releases/latest"><b>⬇ 下载 APK</b></a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><b>⬇ 下载 APK</b></a>
   　·　
   <a href="使用说明.md">使用说明</a>
   　·　
-  <a href="https://github.com/yunluoliu50-cell/WorkBuddy2API-Android/releases">所有版本</a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases">所有版本</a>
 </p>
 
 <p align="center">
@@ -108,7 +108,7 @@ com.yunluo.wb2api
 
 ### 1. 装 APK
 
-从 [Releases](https://github.com/yunluoliu50-cell/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddy2API-1.8.0-app100.apk`。
+从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddy2API-1.8.0-app100.apk`。
 提示「未知来源」时允许即可。桌面图标叫 **WorkBuddy2API 2**。
 
 ### 2. 打开等网关起来
