@@ -2,14 +2,14 @@
   <img src="https://avatars.githubusercontent.com/u/226801564?v=4" width="108" height="108" alt="avatar">
 </p>
 
-<h1 align="center">WorkBuddy2API · 手机版</h1>
+<h1 align="center">WorkBuddyAPI · 手机版</h1>
 
 <p align="center">
   <sub>陨落[洛杉矶高级二改王] · <a href="https://github.com/yunluo91">@yunluo91</a></sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.8.0--app100-0DBD8B?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.8.0--app101-0DBD8B?style=flat-square" alt="Release"></a>
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
@@ -95,11 +95,11 @@ com.yunluo.wb2api
 |---|---|
 | `applicationId` | `com.yunluo.wb2api` |
 | `namespace` / 源码包名 / R / BuildConfig | `com.yunluo.wb2api` |
-| 桌面显示名 | `WorkBuddy2API 2` |
+| 桌面显示名 | `WorkBuddyAPI` |
 
 四项统一，源码目录是 `java/com/yunluo/wb2api/`。
 
-**版本号约定**：`versionName` 形如 `1.8.0-app100`，`versionCode` **固定 100**。
+**版本号约定**：`versionName` 形如 `1.8.0-app101`，`versionCode` **固定 100**。
 这样任意历史版本之间都能互相覆盖安装，不会出现 `INSTALL_FAILED_VERSION_DOWNGRADE`。
 
 ---
@@ -108,7 +108,7 @@ com.yunluo.wb2api
 
 ### 1. 装 APK
 
-从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddy2API-1.8.0-app100.apk`。
+从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.8.0-app101.apk`。
 提示「未知来源」时允许即可。桌面图标叫 **WorkBuddy2API 2**。
 
 ### 2. 打开等网关起来
@@ -414,6 +414,11 @@ app/src/main/
 ---
 
 ## 十三、更新记录
+
+### 1.8.0-app101
+
+- **软件显示名改为 `WorkBuddyAPI`**：桌面图标、启动页标题、常驻通知、关于页统一
+- 去掉旧的「 2」后缀（当初为和旧包共存才加的，包名统一后不需要了）
 
 ### 1.8.0-app100
 

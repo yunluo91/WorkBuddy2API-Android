@@ -2934,7 +2934,7 @@ class MainActivity : ComponentActivity() {
         }
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
         cm?.setPrimaryClip(
-            android.content.ClipData.newPlainText("WorkBuddy2API Key", keys)
+            android.content.ClipData.newPlainText("WorkBuddyAPI Key", keys)
         )
         toast("已复制到剪贴板")
     }
@@ -3043,7 +3043,7 @@ class MainActivity : ComponentActivity() {
     private fun copyLanUrl() {
         val url = lanUrl()
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-        cm?.setPrimaryClip(android.content.ClipData.newPlainText("WorkBuddy2API", url))
+        cm?.setPrimaryClip(android.content.ClipData.newPlainText("WorkBuddyAPI", url))
         toast(if (prefs.lan()) "已复制： $url" else "已复制（局域网还没开，先在设置里打开）")
     }
 

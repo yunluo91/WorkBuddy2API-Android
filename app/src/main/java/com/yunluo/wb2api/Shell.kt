@@ -154,7 +154,7 @@ fun WbBootScreen(
         Spacer(Modifier.height(18.dp))
 
         Text(
-            text = "WorkBuddy2API",
+            text = "WorkBuddyAPI",
             color = WbText,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold

@@ -489,7 +489,7 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "WorkBuddy2API 手机版\n" +
+                        text = "WorkBuddyAPI 手机版\n" +
                                 "把上游模型服务包成本地网关，附带调用记录、" +
                                 "账号池、思考档位调节和可操作手机的 Agent 对话。",
                         style = MaterialTheme.typography.bodySmall,

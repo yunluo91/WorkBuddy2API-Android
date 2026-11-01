@@ -43,7 +43,7 @@ public class GatewayService extends Service {
         public void run() {
             if (!ticking) return;
             NotificationManager nm = getSystemService(NotificationManager.class);
-            if (nm != null) nm.notify(NOTIF_ID, build("WorkBuddy2API · " + PyRunner.phase()));
+            if (nm != null) nm.notify(NOTIF_ID, build("WorkBuddyAPI · " + PyRunner.phase()));
             handler.postDelayed(this, 3000);
         }
     };
@@ -79,7 +79,7 @@ public class GatewayService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        startForeground(NOTIF_ID, build("WorkBuddy2API · 启动中"));
+        startForeground(NOTIF_ID, build("WorkBuddyAPI · 启动中"));
 
         String action = intent != null ? intent.getAction() : ACTION_START;
         if (ACTION_STOP.equals(action)) {
