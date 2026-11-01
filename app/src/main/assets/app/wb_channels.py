@@ -84,23 +84,42 @@ def load(accounts_dir):
         except Exception:
             pass
 
-    # 老文件补新预置：渠道表是「配置」，不是「快照」，
-    # 版本更新加了新渠道时，用户不该被要求删掉 channels.json 才能看到。
-    # 只补缺的 id，已有的（哪怕用户改过）一律不动。
+    # 老文件补新预置 + 补全缺失的结构字段。
+    #
+    # WB-CHANNELS-BACKFILL
+    # 老版本写出来的 channels.json 没有 authKind / website / checkinKind 这些
+    # 后来才加的字段。界面按 authKind 过滤时，它们会被误判成「API Key 型」
+    # 而整片消失（用户实测：78 家只剩 3 家，就是新加的那 3 个）。
+    #
+    # 规则：结构性字段（名字 / 地址 / 类型 / 签到配置）以预置为准补空；
+    # 用户数据（enabled / key / cookie / token / 模型清单）一律不动。
+    STRUCT = ("name", "baseUrl", "prefix", "format", "website",
+              "authKind", "checkinKind", "portalBase")
     try:
-        have = {r.get("id") for r in rows if isinstance(r, dict)}
-        added = 0
+        by_id = {r.get("id"): r for r in rows if isinstance(r, dict)}
+        changed = 0
         for p in _load_presets():
-            if p.get("id") and p["id"] not in have:
+            pid = p.get("id")
+            if not pid:
+                continue
+            hit = by_id.get(pid)
+            if hit is None:
                 item = dict(p)
                 item.setdefault("enabled", False)
                 item.setdefault("key", "")
-                item.setdefault("prefix", item.get("id"))
-                # 已经登录/填过 key 的字段保持空
+                item.setdefault("prefix", pid)
                 item["cookie"] = ""
                 rows.append(item)
-                added += 1
-        if added:
+                changed += 1
+                continue
+            for k in STRUCT:
+                if not hit.get(k) and p.get(k):
+                    hit[k] = p[k]
+                    changed += 1
+            if not hit.get("models") and p.get("models"):
+                hit["models"] = p["models"]
+                changed += 1
+        if changed:
             try:
                 save(accounts_dir, rows)
             except Exception:
