@@ -1,7 +1,13 @@
 package com.fujiang.wb2api.ui
 
+import com.fujiang.wb2api.WbCard
+import com.fujiang.wb2api.WbCard2
+import com.fujiang.wb2api.WbDanger
+import com.fujiang.wb2api.WbLine
+import com.fujiang.wb2api.WbText
 import com.fujiang.wb2api.WbMuted
 import com.fujiang.wb2api.WbWarn
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -72,28 +78,29 @@ fun SettingsScreen(
     prefLan: Boolean,
     prefAutoStart: Boolean,
     prefPanelPwd: String,
-    thinkEnabled: Boolean,
-    thinkMode: String,
-    thinkForceOff: Boolean,
     onPortChange: (String) -> Unit,
     onLanChange: (Boolean) -> Unit,
     onAutoStartChange: (Boolean) -> Unit,
     onPanelPwdChange: (String) -> Unit,
-    onThinkEnabledChange: (Boolean) -> Unit,
-    onThinkModeChange: (String) -> Unit,
-    onThinkForceOffChange: (Boolean) -> Unit,
     onRestartGateway: () -> Unit,
 
     // ---- WB-THINK-LEVEL
-    /** 全局默认思考强度：off / low / high / max */
-    thinkLevel: String,
-    onSelectThinkLevel: (String) -> Unit,
+    /** 打开「数据管理」二级页。 */
+    onOpenData: () -> Unit,
+
+    // ---- WB-KEEPALIVE
+    /** 是否已在电池优化白名单。 */
+    batteryExempt: Boolean,
+    /** 网关服务当前是否在跑。 */
+    serviceRunning: Boolean,
+    /** 通知权限是否给了（没给的话前台服务通知看不见）。 */
+    notifAllowed: Boolean,
+    onRequestBattery: () -> Unit,
+    onOpenNotifSettings: () -> Unit,
 
     // ---- WB-ACCOUNT-IO
-    onExportAccounts: () -> Unit,
-    onImportAccounts: () -> Unit,
-    /** 上一步导入导出的回执（空就不显示）。 */
-    accountIoMsg: String,
+
+    // ---- WB-DATA-MIGRATE
     /** 手机当前的局域网 IP，取不到就是占位文案。 */
     lanIp: String,
     /** 局域网是否真的在监听（实测过的，不是看开关值）。 */
@@ -108,78 +115,132 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // ---------------- 账号导入导出（WB-ACCOUNT-IO）
+        // ---------------- 数据管理入口（WB-DATA-ENTRY）
+        // 账号导入导出 + 数据迁移都收进一个二级页，设置页这里只留一个入口。
         item {
-            SettingCard("账号导入导出") {
-                Text(
-                    "看板那个导出按钮在安卓里点不动（它靠浏览器下载），" +
-                            "这里补一个能用的。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = WbMuted,
-                )
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onExportAccounts,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("导出全部") }
-                    OutlinedButton(
-                        onClick = onImportAccounts,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("从文件导入") }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "规则：\n" +
-                            "· 导出：国内 + 国际**全部**账号，含 accessToken / " +
-                            "refreshToken，文件要收好\n" +
-                            "· 导入：uid 相同 → 覆盖；uid 不同 → 添加",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = WbMuted,
-                    lineHeight = 16.sp,
-                )
-                if (accountIoMsg.isNotEmpty()) {
-                    Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(WbCard2)
+                    .border(1.dp, WbLine, RoundedCornerShape(14.dp))
+                    .clickable(onClick = onOpenData)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
                     Text(
-                        text = accountIoMsg,
+                        text = "数据管理",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = WbText,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "账号导入导出 · 换包名迁移",
                         style = MaterialTheme.typography.labelSmall,
-                        color = WbAccent,
-                        lineHeight = 16.sp,
+                        color = WbMuted,
                     )
                 }
+                Text(text = "\u203A", fontSize = 20.sp, color = WbMuted)
             }
         }
 
-        // ---------------- 思考强度（WB-THINK-LEVEL）
+        // ---------------- 后台保活（WB-KEEPALIVE）
         item {
-            SettingCard("思考强度") {
+            SettingCard("后台保活") {
                 Text(
-                    "新建对话默认用哪一档。对话页输入框上方那一排 chip " +
-                            "也能临时改，那是按会话存的。",
+                    "网关跑在后台才能一直用。系统省电策略会把它杀掉 —— " +
+                            "这里三项都做到位，基本就不会掉。",
                     style = MaterialTheme.typography.bodySmall,
                     color = WbMuted,
                 )
                 Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for ((key, label) in listOf(
-                        "off" to "不思考",
-                        "low" to "Low",
-                        "high" to "High",
-                        "max" to "Max",
-                    )) {
-                        ChoiceChip(
-                            text = label,
-                            selected = thinkLevel == key,
-                            onClick = { onSelectThinkLevel(key) },
+
+                // ① 电池优化
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "电池优化豁免",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = if (batteryExempt) "已加入白名单 —— 系统不会因为省电杀掉它"
+                            else "没加白名单 —— 这是掉后台最常见的原因",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (batteryExempt) WbAccent else WbWarn,
                         )
                     }
+                    if (batteryExempt) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(WbAccent.copy(alpha = 0.16f))
+                                .padding(horizontal = 10.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "已开启",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = WbAccent,
+                            )
+                        }
+                    } else {
+                        OutlinedButton(onClick = onRequestBattery) { Text("去开启") }
+                    }
                 }
-                Spacer(Modifier.height(8.dp))
+
+                Spacer(Modifier.height(10.dp))
+
+                // ② 通知权限
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "通知权限",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = if (notifAllowed) "已允许 —— 前台服务的常驻通知能显示"
+                            else "被关了 —— 前台服务会被降级，更容易被系统回收",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (notifAllowed) WbMuted else WbWarn,
+                        )
+                    }
+                    if (!notifAllowed) {
+                        OutlinedButton(onClick = onOpenNotifSettings) { Text("去开启") }
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                // ③ 服务状态
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "网关服务",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = if (serviceRunning) "正在运行（前台服务 + 唤醒锁已持有）"
+                            else "没在跑 —— 回看板等一下，或者重启 App",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (serviceRunning) WbMuted else WbWarn,
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(9.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (serviceRunning) WbAccent else WbDanger)
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "说明：\n" +
-                            "· 不思考 → 发 reasoning_effort=\"none\"，上游认这个值\n" +
-                            "· 模型不支持关思考时（比如 hy3），「不思考」不生效，" +
-                            "网关会退回该模型的默认档\n" +
-                            "· 档位越高思考 token 越多，耗额度更快",
+                    text = "说明：前台服务用的是 specialUse 类型。" +
+                            "之前的 dataSync 在 Android 14 以后有" +
+                            "「每 24 小时累计 6 小时」的硬上限，到点系统强制停 ——" +
+                            "这就是「跑着跑着掉后台」的直接原因。",
                     style = MaterialTheme.typography.labelSmall,
                     color = WbMuted,
                     lineHeight = 16.sp,
@@ -193,7 +254,7 @@ fun SettingsScreen(
                 LabelledField(
                     label = "端口",
                     value = prefPort,
-                    hint = "默认 8788。改了要重启网关才生效。",
+                    hint = "默认 8888。改了要重启网关才生效。",
                     onValueChange = onPortChange,
                 )
                 Spacer(Modifier.height(12.dp))
@@ -305,57 +366,6 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("保存并重启网关", fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-
-        // ---------------- 思考档位
-        item {
-            SettingCard("思考档位") {
-                Text(
-                    "控制上游模型跑多深的思考。关掉就是不走这套，"
-                            + "上游按它自己的默认来。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(10.dp))
-                SwitchRow(
-                    label = "启用档位调节",
-                    desc = null,
-                    checked = thinkEnabled,
-                    onChange = onThinkEnabledChange,
-                )
-                if (thinkEnabled) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        "默认档位",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        /* ThinkConfig.MODES = {"off", "catalog", "high"}
-                           catalog 的意思：按模型目录里该模型支持的最高档走。
-                           （原来我按 off/low/medium/high 写，那是错的） */
-                        for ((m, label) in listOf(
-                            "off" to "不思考",
-                            "catalog" to "按模型默认",
-                            "high" to "最高档",
-                        )) {
-                            ChoiceChip(
-                                text = label,
-                                selected = thinkMode == m,
-                                onClick = { onThinkModeChange(m) },
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    SwitchRow(
-                        label = "强制关闭",
-                        desc = "连客户端显式给的档位也抹掉，一律不思考。",
-                        checked = thinkForceOff,
-                        onChange = onThinkForceOffChange,
-                    )
                 }
             }
         }
@@ -686,5 +696,151 @@ private fun StatusRow(label: String, value: String) {
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
         )
+    }
+}
+
+
+/**
+ * 数据管理（二级页）。
+ *
+ * 从设置页那个入口点进来，装两块：
+ *   · 账号导入导出（账号池，同 uid 覆盖 / 新 uid 添加）
+ *   · 数据迁移（整包 zip，换包名时用）
+ *
+ * 为什么不摊在设置首页：这两块都是一次性操作，平时不用，
+ * 放在首页只会把真正要改的选项挤下去。
+ */
+@Composable
+fun SettingsDataScreen(
+    accountIoMsg: String,
+    migrateMsg: String,
+    onExportAccounts: () -> Unit,
+    onImportAccounts: () -> Unit,
+    onBackupData: () -> Unit,
+    onRestoreData: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(WbCard)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .clickable(onClick = onBack)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "\u2039 设置",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = WbAccent,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = "数据管理",
+                style = MaterialTheme.typography.labelMedium,
+                color = WbMuted,
+            )
+            Spacer(Modifier.width(10.dp))
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp, 14.dp, 16.dp, 108.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+        item {
+            SettingCard("账号导入导出") {
+                Text(
+                    "看板那个导出按钮在安卓里点不动（它靠浏览器下载），" +
+                            "这里补一个能用的。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = WbMuted,
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = onExportAccounts,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("导出全部") }
+                    OutlinedButton(
+                        onClick = onImportAccounts,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("从文件导入") }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "规则：\n" +
+                            "· 导出：国内 + 国际**全部**账号，含 accessToken / " +
+                            "refreshToken，文件要收好\n" +
+                            "· 导入：uid 相同 → 覆盖；uid 不同 → 添加",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = WbMuted,
+                    lineHeight = 16.sp,
+                )
+                if (accountIoMsg.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = accountIoMsg,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = WbAccent,
+                        lineHeight = 16.sp,
+                    )
+                }
+            }
+        }
+
+        // ---------------- 数据迁移（WB-DATA-MIGRATE）
+        item {
+            SettingCard("数据迁移（换包名用）") {
+                Text(
+                    "改包名等于换一个应用，旧数据系统层面继承不过来。" +
+                            "这里把数据打成 zip 放到你能选的位置，" +
+                            "新包装上后再读回来。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = WbMuted,
+                    lineHeight = 18.sp,
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = onBackupData,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("备份到文件") }
+                    OutlinedButton(
+                        onClick = onRestoreData,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("从文件恢复") }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "备份内容：账号池 + API Key + 面板密码 + " +
+                            "全部调用记录 + 思考档位 + 所有开关偏好。\n" +
+                            "不含 Python 运行时（新装会自己解压）。\n\n" +
+                            "恢复后 App 会自己重启一次 —— 必须重启，" +
+                            "否则内存里的旧账号池会把恢复的文件冲回去。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = WbMuted,
+                    lineHeight = 16.sp,
+                )
+                if (migrateMsg.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = migrateMsg,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = WbAccent,
+                        lineHeight = 16.sp,
+                    )
+                }
+            }
+        }
+        }
     }
 }

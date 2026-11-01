@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WorkBuddy2API</string>
+    <string name="app_name">WorkBuddy2API 2</string>
     <string name="boot_title">WorkBuddy2API</string>
     <string name="boot_sub">多账号反代网关 · 手机版</string>
     <string name="btn_refresh">刷新 / 菜单</string>

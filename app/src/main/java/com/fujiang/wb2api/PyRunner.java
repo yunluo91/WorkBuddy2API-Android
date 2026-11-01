@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class PyRunner {
 
     public static final String TAG = "WB2API";
-    public static final int DEFAULT_PORT = 8788;
+    public static final int DEFAULT_PORT = 8888;
 
     private static final AtomicBoolean STARTING = new AtomicBoolean(false);
     private static volatile boolean running = false;

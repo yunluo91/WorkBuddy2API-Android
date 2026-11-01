@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
@@ -37,7 +38,19 @@
         <service
             android:name=".GatewayService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:stopWithTask="false"
+            android:foregroundServiceType="specialUse">
+            <!-- WB-FGS-SPECIAL-USE
+                 原来是 dataSync。Android 14（API 34）起，dataSync 类型的
+                 前台服务有「每 24 小时累计 6 小时」的硬上限，到点系统
+                 会强制把它停掉 —— 表现就是"跑着跑着掉后台"。
+                 specialUse 没有这个时长限制（审核上要求说明用途，
+                 侧载安装不涉及审核）。
+                 做法跟 WorkBuddy-Hub 一致：它的 BridgeService 也是 specialUse。 -->
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Local OpenAI-compatible gateway on loopback; keeps the account pool and API reachable while the screen is off" />
+        </service>
 
     </application>
 
