@@ -13,12 +13,15 @@
 把它们当渠道接进来，wd 就变成了一个聚合器。
 """
 
+import base64
 import json
 import os
 import threading
 import time
 import urllib.error
 import urllib.request
+
+import wb_dpop
 
 CHANNELS_FILE = "channels.json"
 PRESET_FILE = "channels_preset.json"
@@ -170,6 +173,11 @@ def save(accounts_dir, rows):
             "checkinKind": str(r.get("checkinKind") or ""),
             "authKind": str(r.get("authKind") or "apikey"),
             "token": str(r.get("token") or ""),
+            "ak": str(r.get("ak") or ""),
+            "sk": str(r.get("sk") or ""),
+            "expiration": str(r.get("expiration") or ""),
+            "dpop": r.get("dpop") if isinstance(r.get("dpop"), dict) else {},
+            "stsEndpoint": str(r.get("stsEndpoint") or ""),
             "refreshToken": str(r.get("refreshToken") or ""),
             "tokenAt": str(r.get("tokenAt") or ""),
             "oauthSession": r.get("oauthSession") if isinstance(r.get("oauthSession"), dict) else {},
@@ -727,7 +735,15 @@ def begin_login(accounts_dir, cid):
         return {"ok": False, "msg": "本地回调端口起不来"}
 
     box["port"] = port
+    box["code_verifier"] = verifier
     if kind == "codearts":
+        # DPoP 密钥：换 token 时要用它签 proof，续期也要同一把，所以落盘
+        d, q = wb_dpop.generate_key()
+        rows3 = load(accounts_dir)
+        hit3 = _chan_by_id(rows3, cid)
+        if hit3 is not None:
+            hit3["dpop"] = wb_dpop.private_jwk(d, q)
+            save(accounts_dir, rows3)
         box["url"] = _codearts_authorize(port, challenge)
     else:
         # LobsterAI：redirect_uri 必须和本地监听端口一致，否则回调打不回来
@@ -800,7 +816,79 @@ def _exchange_code(accounts_dir, chan, code, verifier, port):
     kind = str(chan.get("checkinKind") or "")
     if kind == "lobsterai":
         return exchange_code(accounts_dir, chan, code, "")
-    return {"ok": False, "msg": "%s 的换 token 还没实现（CodeArts 要 DPoP 签名）" % kind}
+    if kind == "codearts":
+        return _exchange_codearts(accounts_dir, chan, code, verifier, port)
+    return {"ok": False, "msg": "%s 的换 token 还没实现" % kind}
+
+
+def _exchange_codearts(accounts_dir, chan, code, verifier, port):
+    """CodeArts：按华为 STS 的 OAuth + DPoP 换 token。
+
+    照 vendor channel-pack 的 oauth.ts：
+      POST https://sts.cn-north-4.myhuaweicloud.com/v1/oauth2/tokens
+      DPoP: <ES256 JWT>
+      Content-Type: application/x-www-form-urlencoded
+      client_id=codearts-agent & code & code_verifier &
+      grant_type=authorization_code & redirect_uri=http://127.0.0.1:{port}/oauth/callback
+    """
+    import urllib.parse as _up
+
+    jwk = chan.get("dpop") or {}
+    try:
+        d = int.from_bytes(base64.urlsafe_b64decode(jwk["d"].rstrip("=") + "=="), "big")
+        x = int.from_bytes(base64.urlsafe_b64decode(jwk["x"].rstrip("=") + "=="), "big")
+        y = int.from_bytes(base64.urlsafe_b64decode(jwk["y"].rstrip("=") + "=="), "big")
+    except Exception:
+        return {"ok": False, "msg": "DPoP 密钥丢了，请重新点「打开登录页」"}
+
+    endpoint = str(chan.get("stsEndpoint")
+                   or "https://sts.cn-north-4.myhuaweicloud.com/v1/oauth2/tokens")
+    proof = wb_dpop.dpop_jws(d, (x, y), "POST", endpoint)
+
+    form = _up.urlencode({
+        "client_id": "codearts-agent",
+        "code": code,
+        "code_verifier": verifier,
+        "grant_type": "authorization_code",
+        "redirect_uri": "http://127.0.0.1:%d/oauth/callback" % port,
+    }).encode()
+
+    req = urllib.request.Request(endpoint, data=form, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    req.add_header("DPoP", proof)
+    req.add_header("Accept", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            raw = r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        body = exc.read()[:300].decode("utf-8", "replace")
+        return {"ok": False, "msg": "STS HTTP %s：%s" % (exc.code, body)}
+    except Exception as exc:
+        return {"ok": False, "msg": "STS 请求失败：%r" % (exc,)}
+
+    try:
+        doc = json.loads(raw)
+    except Exception:
+        return {"ok": False, "msg": "STS 返回不是 JSON：%s" % raw[:200]}
+
+    creds = (doc or {}).get("credentials") or {}
+    token = creds.get("security_token") or ""
+    if not token:
+        return {"ok": False, "msg": "没拿到 security_token：%s" % raw[:220]}
+
+    rows = load(accounts_dir)
+    hit = _chan_by_id(rows, chan.get("id"))
+    if hit is None:
+        return {"ok": False, "msg": "渠道在换 token 期间消失了"}
+    hit["token"] = str(token)
+    hit["ak"] = str(creds.get("access_key_id") or "")
+    hit["sk"] = str(creds.get("secret_access_key") or "")
+    hit["expiration"] = str(creds.get("expiration") or "")
+    hit["refreshToken"] = str((doc or {}).get("refresh_token") or "")
+    hit["tokenAt"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    save(accounts_dir, rows)
+    return {"ok": True, "id": chan.get("id"), "tokenLen": len(token),
+            "expiration": hit["expiration"]}
 
 
 # ---------------------------------------------------------------- 签到（按类型）
