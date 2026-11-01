@@ -84,6 +84,30 @@ def load(accounts_dir):
         except Exception:
             pass
 
+    # 老文件补新预置：渠道表是「配置」，不是「快照」，
+    # 版本更新加了新渠道时，用户不该被要求删掉 channels.json 才能看到。
+    # 只补缺的 id，已有的（哪怕用户改过）一律不动。
+    try:
+        have = {r.get("id") for r in rows if isinstance(r, dict)}
+        added = 0
+        for p in _load_presets():
+            if p.get("id") and p["id"] not in have:
+                item = dict(p)
+                item.setdefault("enabled", False)
+                item.setdefault("key", "")
+                item.setdefault("prefix", item.get("id"))
+                # 已经登录/填过 key 的字段保持空
+                item["cookie"] = ""
+                rows.append(item)
+                added += 1
+        if added:
+            try:
+                save(accounts_dir, rows)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     rows = [r for r in rows if isinstance(r, dict) and r.get("id") and r.get("baseUrl")]
     with _lock:
         _cache["path"] = path
@@ -113,6 +137,11 @@ def save(accounts_dir, rows):
             "format": str(r.get("format") or "openai-chat"),
             "headers": r.get("headers") if isinstance(r.get("headers"), dict) else {},
             "models": [m for m in (r.get("models") or []) if isinstance(m, dict) and m.get("id")],
+            "cookie": str(r.get("cookie") or ""),
+            "cookieAt": str(r.get("cookieAt") or ""),
+            "website": str(r.get("website") or ""),
+            "checkinKind": str(r.get("checkinKind") or ""),
+            "checkin": r.get("checkin") if isinstance(r.get("checkin"), dict) else {},
             "website": str(r.get("website") or ""),
         })
     tmp = path + ".tmp"
@@ -154,6 +183,9 @@ def _fetch_models(chan, timeout=15):
     req.add_header("Accept", "application/json")
     if chan.get("key"):
         req.add_header("Authorization", "Bearer " + chan["key"])
+    # 账号型渠道：凭据是从 App 内网页登录抓下来的整条 Cookie
+    if chan.get("cookie"):
+        req.add_header("Cookie", chan["cookie"])
     for k, v in (chan.get("headers") or {}).items():
         try:
             req.add_header(k, v)
@@ -247,6 +279,151 @@ def remove(accounts_dir, cid):
     return save(accounts_dir, rows)
 
 
+def set_cookie(accounts_dir, cid, cookie):
+    """把网页登录抓到的 Cookie 存到渠道上。"""
+    rows = load(accounts_dir)
+    for r in rows:
+        if r.get("id") == cid:
+            r["cookie"] = str(cookie or "").strip()
+            r["cookieAt"] = time.strftime("%Y-%m-%d %H:%M:%S")
+            save(accounts_dir, rows)
+            return r
+    raise KeyError("没有这个渠道: %s" % cid)
+
+
+def request(chan, path, method="GET", body=None, timeout=30, extra_headers=None):
+    """用渠道凭据打它的任意接口（签到、查积分、拉模型都走这里）。
+
+    path 以 / 开头，拼在 baseUrl 之后；body 是 dict 就按 JSON 发。
+    """
+    url = chan["baseUrl"].rstrip("/") + "/" + path.lstrip("/")
+    data = None
+    if body is not None:
+        data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method=method)
+    req.add_header("Accept", "application/json")
+    if data is not None:
+        req.add_header("Content-Type", "application/json")
+    if chan.get("key"):
+        req.add_header("Authorization", "Bearer " + chan["key"])
+    if chan.get("cookie"):
+        req.add_header("Cookie", chan["cookie"])
+    for k, v in (chan.get("headers") or {}).items():
+        try:
+            req.add_header(k, v)
+        except Exception:
+            pass
+    for k, v in (extra_headers or {}).items():
+        try:
+            req.add_header(k, v)
+        except Exception:
+            pass
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        raw = resp.read().decode("utf-8", "replace")
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"raw": raw[:2000]}
+
+
+# ---------------------------------------------------------------- 签到（按类型）
+
+def _chan_by_id(rows, cid):
+    for r in rows:
+        if r.get("id") == cid:
+            return r
+    return None
+
+
+def _checkin_loomy(chan):
+    """讯飞 Loomy：一次 POST /points/first-login（幂等）。"""
+    data = request(chan, "/points/first-login", method="POST", body={}, timeout=30)
+    ok = not (isinstance(data, dict) and data.get("error"))
+    return {"ok": ok, "id": chan["id"], "result": data,
+            "msg": "" if ok else "接口返回错误"}
+
+
+def _checkin_lobsterai(chan):
+    """有道 LobsterAI：查槽位 → 查上下文 → 领取，三步。
+
+    照 vendor/channel-pack/src/lobsterai-credits.ts 的顺序：
+      ① GET  /api/client-activities/slot?placement=…&clientVersion=…
+      ② GET  /api/client-activities/{code}/context?configRevision=…
+      ③ POST /api/client-activities/{code}/actions/check_in
+    已经领过就不能再领（claimedToday），这时直接回报 already。
+    """
+    slot = request(chan, "/api/client-activities/slot?placement=app&clientVersion=1.0.0",
+                   method="GET", timeout=25)
+    env = slot.get("data") if isinstance(slot, dict) else None
+    code = ""
+    if isinstance(env, dict):
+        code = str(env.get("activityCode") or "")
+    if not code:
+        return {"ok": False, "id": chan["id"], "msg": "拿不到活动 id（可能没登录或活动已结束）",
+                "result": slot}
+
+    ctx = request(chan, "/api/client-activities/%s/context?configRevision=1" % code,
+                  method="GET", timeout=25)
+    body = ctx.get("data") if isinstance(ctx, dict) else {}
+    if isinstance(body, dict) and body.get("claimedToday"):
+        return {"ok": True, "id": chan["id"], "already": True,
+                "msg": "今天已经签到过了", "result": ctx}
+
+    got = request(chan, "/api/client-activities/%s/actions/check_in" % code,
+                  method="POST", body={}, timeout=25)
+    ok = not (isinstance(got, dict) and got.get("error"))
+    return {"ok": ok, "id": chan["id"], "result": got,
+            "msg": "" if ok else "领取接口返回错误"}
+
+
+CHECKIN_KINDS = {
+    "loomy": _checkin_loomy,
+    "lobsterai": _checkin_lobsterai,
+}
+
+
+def checkin(accounts_dir, cid):
+    """通用签到：按渠道行里的 checkin 配置打一次。
+
+    配置长这样（存在 channels.json 的渠道行里）：
+        "checkin": {"path": "/user/sign", "method": "POST", "body": {}}
+
+    每家平台的签到接口不一样，但形式都是「带凭据打一个地址」，
+    所以把差别做成配置，代码只写一遍。
+    """
+    rows = load(accounts_dir)
+    hit = None
+    for r in rows:
+        if r.get("id") == cid:
+            hit = r
+            break
+    if hit is None:
+        return {"ok": False, "msg": "没有这个渠道: %s" % cid}
+    # 有专门实现的先走专门实现
+    kind = str(hit.get("checkinKind") or "").strip()
+    if kind in CHECKIN_KINDS:
+        if not hit.get("cookie"):
+            return {"ok": False, "msg": "还没登录 —— 先点「登录」把账号登进去"}
+        try:
+            return CHECKIN_KINDS[kind](hit)
+        except Exception as exc:
+            return {"ok": False, "id": cid, "msg": str(exc)}
+
+    cfg = hit.get("checkin") or {}
+    path = str(cfg.get("path") or "").strip()
+    if not path:
+        return {"ok": False, "msg": "这个渠道还没配签到接口"}
+    try:
+        data = request(hit, path,
+                       method=str(cfg.get("method") or "POST").upper(),
+                       body=cfg.get("body") if isinstance(cfg.get("body"), dict) else {},
+                       timeout=30,
+                       extra_headers=cfg.get("headers") if isinstance(cfg.get("headers"), dict) else None)
+        return {"ok": True, "id": cid, "result": data}
+    except Exception as exc:
+        return {"ok": False, "id": cid, "msg": str(exc)}
+
+
 def describe(rows):
     """给控制台看的摘要。"""
     return [{
@@ -256,6 +433,10 @@ def describe(rows):
         "baseUrl": c.get("baseUrl"),
         "enabled": bool(c.get("enabled")),
         "hasKey": bool(c.get("key")),
+        "hasCookie": bool(c.get("cookie")),
+        "cookieAt": c.get("cookieAt") or "",
+        "hasCheckin": bool((c.get("checkin") or {}).get("path")),
+        "website": str(c.get("website") or ""),
         "models": len(c.get("models") or []),
     } for c in rows]
 
@@ -279,6 +460,9 @@ def forward(chan, model, payload, timeout=600):
     req.add_header("Accept", "text/event-stream" if body.get("stream") else "application/json")
     if chan.get("key"):
         req.add_header("Authorization", "Bearer " + chan["key"])
+    # 账号型渠道：凭据是从 App 内网页登录抓下来的整条 Cookie
+    if chan.get("cookie"):
+        req.add_header("Cookie", chan["cookie"])
     for k, v in (chan.get("headers") or {}).items():
         try:
             req.add_header(k, v)

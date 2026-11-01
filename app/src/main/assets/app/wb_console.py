@@ -1823,6 +1823,14 @@ function renderChannels(){
           'id="chk-' + esc(r.id) + '">' +
         '<button class="btn ghost mini" onclick="saveChannelKey(\'' + esc(r.id) + '\')">保存</button>' +
       '</div>' +
+      '<div class="chkeyrow">' +
+        '<button class="btn ghost mini" onclick="openChannelLogin(\'' + esc(r.id) + '\', \'' +
+          esc(r.website || '') + '\')">登录</button>' +
+        '<button class="btn ghost mini" onclick="channelCheckin(\'' + esc(r.id) + '\')">签到</button>' +
+        '<span class="chstat" style="align-self:center">' +
+          (r.hasCookie ? ('已登录 · ' + esc(r.cookieAt || '') ) : '未登录') +
+        '</span>' +
+      '</div>' +
     '</div>';
   }).join('');
 }
@@ -1855,6 +1863,42 @@ async function addChannel(){
     loadChannels();
   }catch(e){
     toast('添加失败：' + e.message, 'bad');
+  }
+}
+
+/* WB-CHANNEL-LOGIN 打开 App 里的登录窗口（走 JS 桥） */
+function openChannelLogin(id, site){
+  try{
+    if(!window.WbBridge || !window.WbBridge.openLogin){
+      toast('这个版本不支持网页登录，请升级 App', 'bad');
+      return;
+    }
+    var url = site || '';
+    if(!url){
+      var row = (CH.rows || []).filter(function(x){ return x.id === id; })[0];
+      url = (row && row.baseUrl) ? row.baseUrl : '';
+    }
+    window.WbBridge.openLogin(id, url);
+  }catch(e){
+    toast('打不开登录窗口：' + e.message, 'bad');
+  }
+}
+
+/* WB-CHANNEL-CHECKIN 通用签到 */
+async function channelCheckin(id){
+  try{
+    toast('正在签到 ' + id + ' …', 'ok');
+    var d = await fetch('/api/channels/checkin', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: id})
+    }).then(function(r){ return r.json(); });
+    if(d && d.ok){
+      toast('签到成功：' + id, 'ok');
+    }else{
+      toast('签到失败：' + (d.msg || d.error || '未知原因'), 'bad');
+    }
+  }catch(e){
+    toast('签到失败：' + e.message, 'bad');
   }
 }
 
@@ -3120,6 +3164,35 @@ class Handler(BaseHTTPRequestHandler):
                             s["context"] = 0
             save_chat(data)
             _json_send(self, 200, {"ok": True})
+            return
+        if path == "/api/channels/cookie":
+            if not self._token_ok():
+                self._deny()
+                return
+            try:
+                body2 = body if isinstance(body, dict) else {}
+                cid = str(body2.get("id") or "").strip()
+                ck = str(body2.get("cookie") or "").strip()
+                if not cid or not ck:
+                    _json_send(self, 200, {"error": "缺少 id 或 cookie"})
+                    return
+                r = wb_channels.set_cookie(_accounts_dir(), cid, ck)
+                _json_send(self, 200, {"ok": True, "id": cid,
+                                       "cookieAt": r.get("cookieAt"),
+                                       "len": len(ck)})
+            except Exception as exc:
+                _json_send(self, 200, {"error": str(exc)})
+            return
+        if path == "/api/channels/checkin":
+            if not self._token_ok():
+                self._deny()
+                return
+            try:
+                body2 = body if isinstance(body, dict) else {}
+                cid = str(body2.get("id") or "").strip()
+                _json_send(self, 200, wb_channels.checkin(_accounts_dir(), cid))
+            except Exception as exc:
+                _json_send(self, 200, {"ok": False, "error": str(exc)})
             return
         if path == "/api/channels/remove":
             if not self._token_ok():

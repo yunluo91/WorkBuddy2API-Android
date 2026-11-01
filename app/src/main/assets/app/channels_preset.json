@@ -2695,5 +2695,31 @@
    }
   ],
   "headers": {}
+ },
+ {
+  "id": "loomy",
+  "name": "Loomy（讯飞）",
+  "baseUrl": "https://loomyad.xunfei.cn/api/v1",
+  "format": "openai-chat",
+  "website": "https://account.xfinfr.com",
+  "enabled": false,
+  "key": "",
+  "prefix": "loomy",
+  "models": [],
+  "headers": {},
+  "checkinKind": "loomy"
+ },
+ {
+  "id": "lobsterai",
+  "name": "LobsterAI（有道）",
+  "baseUrl": "https://lobsterai-server.youdao.com",
+  "format": "openai-chat",
+  "website": "https://lobsterai.youdao.com",
+  "enabled": false,
+  "key": "",
+  "prefix": "lobsterai",
+  "models": [],
+  "headers": {},
+  "checkinKind": "lobsterai"
  }
 ]

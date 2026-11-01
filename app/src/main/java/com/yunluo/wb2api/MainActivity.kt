@@ -18,6 +18,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
@@ -282,6 +284,12 @@ class MainActivity : ComponentActivity() {
 
     /** WB-ACCOUNT-IO 导入导出的回执。 */
     private var accountIoMsg by mutableStateOf("")
+
+    /* WB-CHANNEL-LOGIN 渠道登录窗口的状态。
+       channelLoginId 非空 = 登录窗口开着；channelLoginUrl 是它当前地址。 */
+    private var channelLoginId by mutableStateOf("")
+    private var channelLoginUrl by mutableStateOf("")
+    private var channelLoginMsg by mutableStateOf("")
 
     /** WB-KEEPALIVE 设置页显示用的实时状态。 */
     private var batteryExemptState by mutableStateOf(false)
@@ -571,6 +579,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // WB-CHANNEL-LOGIN 渠道登录窗口（盖在最上层）
+            if (channelLoginId.isNotEmpty()) {
+                ChannelLoginOverlay()
+            }
+
             // 启动遮罩盖在最上层
             if (booting) {
                 WbBootScreen(
@@ -650,6 +663,209 @@ class MainActivity : ComponentActivity() {
             web = holder.web
             if (booting) return@LaunchedEffect
             if (holder.web.url == null) holder.web.loadUrl(loginUrl())
+        }
+    }
+
+    /**
+     * WB-CHANNEL-LOGIN 渠道登录窗口。
+     *
+     * 思路跟看板那套一样：在 App 里开网页，让用户自己登录，
+     * 登录完把 Cookie 抓下来存到渠道上。之后签到的请求、
+     * 转发到该渠道的 /v1/chat/completions 都自动带这条 Cookie。
+     *
+     * 为什么不用各家的 OAuth 客户端：每家一套（有的还带 WASM 校验、
+     * 二维码、微信扫码），而且随时会变。抓 Cookie 是通用解法。
+     */
+    @Composable
+    private fun ChannelLoginOverlay() {
+        var web by remember { mutableStateOf<WebView?>(null) }
+        var addr by remember { mutableStateOf(channelLoginUrl) }
+        var loading by remember { mutableStateOf(true) }
+
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(WbBg)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(WbCard)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                        .clickable {
+                            channelLoginId = ""
+                            channelLoginUrl = ""
+                            channelLoginMsg = ""
+                        }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text("取消", fontSize = 13.sp, color = WbMuted)
+                }
+                Text(
+                    text = "登录 · $channelLoginId",
+                    modifier = Modifier.weight(1f),
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = WbText,
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                        .background(WbAccent.copy(alpha = 0.16f))
+                        .clickable {
+                            val w = web ?: return@clickable
+                            val cm = android.webkit.CookieManager.getInstance()
+                            val here = w.url ?: channelLoginUrl
+                            val cookie = cm.getCookie(here).orEmpty()
+                            if (cookie.isEmpty()) {
+                                channelLoginMsg = "这个页面没抓到 Cookie —— 先在上面把账号登进去"
+                                return@clickable
+                            }
+                            channelLoginMsg = "正在保存…"
+                            saveChannelCookie(channelLoginId, cookie)
+                        }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text("完成", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = WbAccent)
+                }
+            }
+
+            // 地址栏：默认给渠道的站点，用户可以自己改
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(WbCard2)
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicTextField(
+                    value = addr,
+                    onValueChange = { addr = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = TextStyle(color = WbText, fontSize = 12.sp),
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                        .clickable {
+                            val u = if (addr.startsWith("http")) addr else "https://$addr"
+                            loading = true
+                            web?.loadUrl(u)
+                        }
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text("前往", fontSize = 12.sp, color = WbAccent)
+                }
+            }
+
+            if (channelLoginMsg.isNotEmpty()) {
+                Text(
+                    text = channelLoginMsg,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(WbWarn.copy(alpha = 0.12f))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                    fontSize = 12.sp,
+                    color = WbWarn,
+                )
+            }
+
+            Box(Modifier.weight(1f)) {
+                AndroidView(
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            settings.databaseEnabled = true
+                            settings.loadWithOverviewMode = true
+                            settings.useWideViewPort = true
+                            android.webkit.CookieManager.getInstance()
+                                .setAcceptCookie(true)
+                            webViewClient = object : android.webkit.WebViewClient() {
+                                override fun onPageFinished(v: WebView?, url: String?) {
+                                    loading = false
+                                    if (url != null) addr = url
+                                }
+                            }
+                            if (channelLoginUrl.isNotEmpty()) loadUrl(channelLoginUrl)
+                            web = this
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    update = { }
+                )
+                if (loading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.TopCenter)
+                    )
+                }
+            }
+        }
+    }
+
+    /** 把抓到的 Cookie 交给控制台存进渠道。 */
+    private fun saveChannelCookie(channelId: String, cookie: String) {
+        io.execute {
+            var conn: java.net.HttpURLConnection? = null
+            try {
+                val url = java.net.URL(consoleUrl() + "api/channels/cookie")
+                conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 8000
+                    readTimeout = 12000
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("X-WB-Token", WbApi.token)
+                }
+                val body = org.json.JSONObject()
+                    .put("id", channelId)
+                    .put("cookie", cookie)
+                    .toString()
+                conn.outputStream.use { it.write(body.toByteArray()) }
+                val code = conn.responseCode
+                val text = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                    ?.bufferedReader()?.use { it.readText() }.orEmpty()
+                runOnUiThread {
+                    val ok = try {
+                        org.json.JSONObject(text).optBoolean("ok", false)
+                    } catch (_: Throwable) {
+                        false
+                    }
+                    if (ok) {
+                        channelLoginMsg = "已保存（${cookie.length} 字节）"
+                        channelLoginId = ""
+                        channelLoginUrl = ""
+                        toast("渠道 $channelId 登录凭据已保存")
+                        toolWebReload()
+                    } else {
+                        channelLoginMsg = "保存失败：HTTP $code ${text.take(120)}"
+                    }
+                }
+            } catch (t: Throwable) {
+                runOnUiThread { channelLoginMsg = "保存失败：${t.message}" }
+            } finally {
+                runCatching { conn?.disconnect() }
+            }
+        }
+    }
+
+    /** 存完凭据让控制台网页刷新一下，渠道页的状态才更新。 */
+    private fun toolWebReload() {
+        try {
+            toolHolderRef?.web?.evaluateJavascript("pick('channels')", null)
+        } catch (_: Throwable) {
         }
     }
 
@@ -3226,6 +3442,23 @@ class MainActivity : ComponentActivity() {
                 prefs.setThinkLevel(v)
                 thinkLevel = v
                 chatState = chatState.copy(effort = v)
+            }
+        }
+
+        /**
+         * WB-CHANNEL-LOGIN 渠道页点「登录」→ 打开登录窗口。
+         *
+         * 渠道页是网页，开不了 App 里的 WebView，所以走桥。
+         * url 是起始地址（渠道的站点首页），用户在窗口里自己登。
+         */
+        @android.webkit.JavascriptInterface
+        fun openLogin(id: String?, url: String?) {
+            val cid = (id ?: "").trim()
+            if (cid.isEmpty()) return
+            runOnUiThread {
+                channelLoginId = cid
+                channelLoginUrl = (url ?: "").trim().ifEmpty { "https://www.baidu.com" }
+                channelLoginMsg = ""
             }
         }
 
