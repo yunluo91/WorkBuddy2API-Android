@@ -1467,7 +1467,7 @@ color:var(--fg);font-size:13.5px;outline:none;font-family:inherit}
 .chsearch{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);
   border-radius:9px;padding:8px 11px;color:var(--fg);font:inherit;font-size:13px}
 .chstat{font-size:11.5px;color:var(--dim);white-space:nowrap}
-.chlist{flex:1;overflow-y:auto;padding:9px 12px calc(12px + env(safe-area-inset-bottom));
+.chlist{flex:1;overflow-y:auto;padding:9px 12px calc(96px + env(safe-area-inset-bottom));
   display:flex;flex-direction:column;gap:7px}
 .chrow{background:var(--panel);border:1px solid var(--line);border-radius:11px;
   padding:10px 12px}
@@ -1490,7 +1490,7 @@ color:var(--fg);font-size:13.5px;outline:none;font-family:inherit}
 .chkeyrow{display:flex;gap:6px;margin-top:7px}
 .chkeyrow input{flex:1;min-width:0;background:#0b0f14;border:1px solid var(--line);
   border-radius:8px;padding:7px 10px;color:var(--fg);font:inherit;font-size:12px}
-.chfoot{padding:8px 14px calc(10px + env(safe-area-inset-bottom));
+.chfoot{padding:8px 14px calc(96px + env(safe-area-inset-bottom));
   font-size:11px;color:var(--dim);line-height:1.6;border-top:1px solid var(--line)}
 
 .chadd{display:flex;flex-direction:column;gap:6px;padding:10px 12px;
@@ -1554,8 +1554,8 @@ color:var(--fg);font-size:13.5px;outline:none;font-family:inherit}
   </div>
   <div class="chlist" id="chList"><div class="empty">加载中…</div></div>
   <div class="chfoot">
-    填好 base URL 和 key，打开开关，模型就会以 <code>渠道id/模型</code>
-    的形式出现在模型清单里。
+    点「登录」在弹出的窗口里登账号，点「签到」领当天额度。
+    登录后模型会以 <code>渠道id/模型</code> 出现在模型清单里。
   </div>
 </div>
 
@@ -1787,7 +1787,11 @@ async function loadChannels(){
     if(d && d.error) throw new Error(d.error);
     CH.rows = d.channels || [];
     var st = document.getElementById('chStat');
-    if(st) st.textContent = '启用 ' + (d.enabled||0) + ' / 共 ' + (d.total||0);
+    if(st){
+      var loginRows = (d.channels || []).filter(function(r){ return r.authKind === 'login'; });
+      var on = loginRows.filter(function(r){ return r.enabled; }).length;
+      st.textContent = '启用 ' + on + ' / 共 ' + loginRows.length;
+    }
     renderChannels();
   }catch(e){
     if(box) box.innerHTML = '<div class="empty">读取失败：' + esc(e.message) + '</div>';
@@ -1799,7 +1803,13 @@ function renderChannels(){
   if(!box) return;
   var q = (document.getElementById('chQ') || {}).value || '';
   q = q.trim().toLowerCase();
+  /* WB-CHANNELS-LOGIN-ONLY
+     这一页只列「能登录 + 能签到」的渠道 —— 跟插件渠道页一致。
+     那些要自己填 API Key 的提供方（Agnes / Anthropic / Baidu…）
+     是插件里的另一个目录（providers registry），不是这一页的东西，
+     不在界面上出现，免得看着像要用户自己搞 key。 */
   var rows = CH.rows.filter(function(r){
+    if(r.authKind !== 'login') return false;
     if(!q) return true;
     return (r.id + ' ' + (r.name||'') + ' ' + (r.baseUrl||'')).toLowerCase().indexOf(q) >= 0;
   });

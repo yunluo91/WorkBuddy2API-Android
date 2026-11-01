@@ -10,7 +10,8 @@
   "prefix": "ofm",
   "models": [],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "DSH Our Free Model"
  },
  {
   "id": "agnes",
@@ -28,11 +29,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "alibaba_cloud",
-  "name": "Alibaba Cloud",
+  "name": "Alibaba Cloud（阿里云百炼）",
   "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
   "format": "openai-chat",
   "website": "https://www.alibabacloud.com/en/product/modelstudio",
@@ -70,11 +72,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "阿里云百炼"
  },
  {
   "id": "anthropic",
-  "name": "Anthropic",
+  "name": "Anthropic（Claude 官方）",
   "baseUrl": "https://api.anthropic.com/v1",
   "format": "anthropic-messages",
   "website": "https://www.anthropic.com/",
@@ -96,11 +99,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "Claude 官方"
  },
  {
   "id": "baidu",
-  "name": "Baidu Qianfan",
+  "name": "Baidu Qianfan（百度千帆）",
   "baseUrl": "https://qianfan.baidubce.com/v2",
   "format": "openai-chat",
   "website": "https://qianfan.baidubce.com",
@@ -145,11 +149,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "百度千帆"
  },
  {
   "id": "bedrock",
-  "name": "Amazon Bedrock",
+  "name": "Amazon Bedrock（亚马逊云）",
   "baseUrl": "https://bedrock-mantle.us-east-1.api.aws/v1",
   "format": "openai-chat",
   "website": "https://aws.amazon.com/bedrock/",
@@ -163,11 +168,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "亚马逊云"
  },
  {
   "id": "cerebras",
-  "name": "Cerebras",
+  "name": "Cerebras（晶圆级芯片）",
   "baseUrl": "https://api.cerebras.ai/v1",
   "format": "openai-chat",
   "website": "https://www.cerebras.ai/",
@@ -201,7 +207,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "晶圆级芯片"
  },
  {
   "id": "cheaperinference",
@@ -219,11 +226,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "chutes",
-  "name": "Chutes",
+  "name": "Chutes（推理云）",
   "baseUrl": "https://llm.chutes.ai/v1",
   "format": "openai-chat",
   "website": "https://chutes.ai/",
@@ -237,7 +245,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "推理云"
  },
  {
   "id": "cline_pass",
@@ -295,11 +304,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "cohere",
-  "name": "Cohere",
+  "name": "Cohere（加拿大）",
   "baseUrl": "https://api.cohere.ai/compatibility/v1",
   "format": "openai-chat",
   "website": "https://cohere.com/",
@@ -325,11 +335,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "加拿大"
  },
  {
   "id": "deepinfra",
-  "name": "DeepInfra",
+  "name": "DeepInfra（推理托管）",
   "baseUrl": "https://api.deepinfra.com/v1/openai",
   "format": "openai-chat",
   "website": "https://deepinfra.com/",
@@ -343,11 +354,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "推理托管"
  },
  {
   "id": "deepseek",
-  "name": "DeepSeek",
+  "name": "DeepSeek（深度求索）",
   "baseUrl": "https://api.deepseek.com",
   "format": "openai-chat",
   "website": "https://www.deepseek.com/",
@@ -389,7 +401,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "深度求索"
  },
  {
   "id": "experiential",
@@ -407,7 +420,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "featherless",
@@ -453,11 +467,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "fireworks",
-  "name": "Fireworks",
+  "name": "Fireworks（推理托管）",
   "baseUrl": "https://api.fireworks.ai/inference/v1",
   "format": "openai-chat",
   "website": "https://fireworks.ai/",
@@ -479,7 +494,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "推理托管"
  },
  {
   "id": "fleetrelay_t1",
@@ -501,11 +517,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "glm",
-  "name": "Z.ai (Anthropic wire)",
+  "name": "Z.ai（智谱 GLM）",
   "baseUrl": "https://api.z.ai/api/anthropic/v1",
   "format": "anthropic-messages",
   "website": "https://z.ai",
@@ -547,11 +564,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "智谱 GLM"
  },
  {
   "id": "glm-cn",
-  "name": "Zhipu GLM (CN)",
+  "name": "智谱 GLM（国内版）",
   "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
   "format": "openai-chat",
   "website": "https://open.bigmodel.cn",
@@ -601,11 +619,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "国内版"
  },
  {
   "id": "groq",
-  "name": "Groq",
+  "name": "Groq（高速推理）",
   "baseUrl": "https://api.groq.com/openai/v1",
   "format": "openai-chat",
   "website": "https://groq.com/",
@@ -631,11 +650,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "高速推理"
  },
  {
   "id": "huggingface",
-  "name": "Hugging Face",
+  "name": "Hugging Face（抱抱脸）",
   "baseUrl": "https://router.huggingface.co/v1",
   "format": "openai-chat",
   "website": "https://huggingface.co/",
@@ -649,11 +669,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "抱抱脸"
  },
  {
   "id": "hyperbolic",
-  "name": "Hyperbolic AI",
+  "name": "Hyperbolic（推理云）",
   "baseUrl": "https://api.hyperbolic.xyz/v1",
   "format": "openai-chat",
   "website": "https://hyperbolic.xyz",
@@ -695,11 +716,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "推理云"
  },
  {
   "id": "kimi",
-  "name": "Kimi",
+  "name": "Kimi（月之暗面）",
   "baseUrl": "https://api.moonshot.ai/v1",
   "format": "openai-chat",
   "website": "https://www.kimi.com/",
@@ -713,11 +735,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "月之暗面"
  },
  {
   "id": "kimi_code",
-  "name": "Kimi Code",
+  "name": "Kimi Code（月之暗面 编程版）",
   "baseUrl": "https://api.kimi.com/coding/v1",
   "format": "openai-chat",
   "website": "https://www.kimi.com/code",
@@ -767,7 +790,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "月之暗面 编程版"
  },
  {
   "id": "lightning",
@@ -785,7 +809,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "llm7",
@@ -836,11 +861,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "minimax",
-  "name": "MiniMax",
+  "name": "MiniMax（稀宇科技）",
   "baseUrl": "https://api.minimax.io/v1",
   "format": "openai-chat",
   "website": "https://www.minimax.io/",
@@ -866,11 +892,12 @@
    }
   ],
   "headers": {},
-  "authKind": "login"
+  "authKind": "login",
+  "nameZh": "稀宇科技"
  },
  {
   "id": "minimax-cn",
-  "name": "MiniMax (CN)",
+  "name": "MiniMax（稀宇科技 国内版）",
   "baseUrl": "https://api.minimaxi.com/anthropic/v1",
   "format": "anthropic-messages",
   "website": "https://www.minimaxi.com",
@@ -896,11 +923,12 @@
    }
   ],
   "headers": {},
-  "authKind": "login"
+  "authKind": "login",
+  "nameZh": "稀宇科技 国内版"
  },
  {
   "id": "mistral",
-  "name": "Mistral",
+  "name": "Mistral（法国）",
   "baseUrl": "https://api.mistral.ai/v1",
   "format": "openai-chat",
   "website": "https://mistral.ai/",
@@ -926,11 +954,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "法国"
  },
  {
   "id": "mistral_codestral",
-  "name": "Mistral Codestral",
+  "name": "Mistral Codestral（代码专用）",
   "baseUrl": "https://codestral.mistral.ai/v1",
   "format": "openai-chat",
   "website": "https://mistral.ai/",
@@ -944,7 +973,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "代码专用"
  },
  {
   "id": "morph",
@@ -986,7 +1016,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "nararoute",
@@ -1004,11 +1035,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "nebius",
-  "name": "Nebius Token Factory",
+  "name": "Nebius（推理云）",
   "baseUrl": "https://api.tokenfactory.nebius.com/v1",
   "format": "openai-chat",
   "website": "https://tokenfactory.nebius.com/",
@@ -1026,11 +1058,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "推理云"
  },
  {
   "id": "novita",
-  "name": "Novita AI",
+  "name": "Novita AI（推理云）",
   "baseUrl": "https://api.novita.ai/openai/v1",
   "format": "openai-chat",
   "website": "https://novita.ai/",
@@ -1044,11 +1077,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "推理云"
  },
  {
   "id": "openai_api",
-  "name": "OpenAI API",
+  "name": "OpenAI API（官方 API）",
   "baseUrl": "https://api.openai.com/v1",
   "format": "openai-responses",
   "website": "https://platform.openai.com/",
@@ -1146,11 +1180,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "官方 API"
  },
  {
   "id": "opencode_go",
-  "name": "OpenCode Go",
+  "name": "OpenCode Go（免费车道）",
   "baseUrl": "https://opencode.ai/zen/go/v1",
   "format": "openai-chat",
   "website": "https://opencode.ai/go",
@@ -1256,7 +1291,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "免费车道"
  },
  {
   "id": "opper",
@@ -1274,7 +1310,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "orcarouter",
@@ -1292,11 +1329,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "perplexity",
-  "name": "Perplexity",
+  "name": "Perplexity（联网搜索）",
   "baseUrl": "https://api.perplexity.ai",
   "format": "openai-chat",
   "website": "https://www.perplexity.ai",
@@ -1314,7 +1352,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "联网搜索"
  },
  {
   "id": "poolside",
@@ -1336,11 +1375,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "qwencloud",
-  "name": "QwenCloud Token Plan",
+  "name": "QwenCloud（阿里通义 令牌计划）",
   "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
   "format": "openai-chat",
   "website": "https://qwencloud.com/",
@@ -1374,11 +1414,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "阿里通义 令牌计划"
  },
  {
   "id": "qwencloud_coding",
-  "name": "QwenCloud Coding Plan",
+  "name": "QwenCloud Coding（阿里通义 编程版）",
   "baseUrl": "https://coding-intl.dashscope.aliyuncs.com/v1",
   "format": "openai-chat",
   "website": "https://qwencloud.com/",
@@ -1416,11 +1457,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "阿里通义 编程版"
  },
  {
   "id": "sambanova",
-  "name": "SambaNova",
+  "name": "SambaNova（推理芯片）",
   "baseUrl": "https://api.sambanova.ai/v1",
   "format": "openai-chat",
   "website": "https://sambanova.ai/",
@@ -1434,11 +1476,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "推理芯片"
  },
  {
   "id": "scaleway",
-  "name": "Scaleway",
+  "name": "Scaleway（法国云）",
   "baseUrl": "https://api.scaleway.ai/v1",
   "format": "openai-chat",
   "website": "https://www.scaleway.com/",
@@ -1452,11 +1495,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "法国云"
  },
  {
   "id": "siliconflow",
-  "name": "SiliconFlow",
+  "name": "SiliconFlow（硅基流动）",
   "baseUrl": "https://api.siliconflow.com/v1",
   "format": "openai-chat",
   "website": "https://siliconflow.com/",
@@ -1534,11 +1578,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "硅基流动"
  },
  {
   "id": "tencent",
-  "name": "Tencent Hunyuan",
+  "name": "Tencent Hunyuan（腾讯混元）",
   "baseUrl": "https://api.hunyuan.cloud.tencent.com/v1",
   "format": "openai-chat",
   "website": "https://cloud.tencent.com/product/hunyuan",
@@ -1558,11 +1603,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "腾讯混元"
  },
  {
   "id": "together",
-  "name": "Together AI",
+  "name": "Together AI（聚合）",
   "baseUrl": "https://api.together.ai/v1",
   "format": "openai-chat",
   "website": "https://www.together.ai/",
@@ -1592,7 +1638,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "聚合"
  },
  {
   "id": "tokenrouter",
@@ -1694,11 +1741,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "venice",
-  "name": "Venice AI",
+  "name": "Venice AI（隐私）",
   "baseUrl": "https://api.venice.ai/api/v1",
   "format": "openai-chat",
   "website": "https://venice.ai",
@@ -1744,11 +1792,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "隐私"
  },
  {
   "id": "vercel",
-  "name": "Vercel AI Gateway",
+  "name": "Vercel AI Gateway（前端云）",
   "baseUrl": "https://ai-gateway.vercel.sh/v1",
   "format": "openai-chat",
   "website": "https://vercel.com/ai-gateway",
@@ -1762,11 +1811,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "前端云"
  },
  {
   "id": "volcengine-ark",
-  "name": "Volcengine Ark",
+  "name": "Volcengine Ark（火山方舟 字节）",
   "baseUrl": "https://ark.cn-beijing.volces.com/api/coding/v3",
   "format": "openai-chat",
   "website": "https://console.volcengine.com/ark",
@@ -1812,7 +1862,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "火山方舟 字节"
  },
  {
   "id": "wafer",
@@ -1830,7 +1881,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "wandb",
@@ -1848,11 +1900,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "xai",
-  "name": "xAI (Grok)",
+  "name": "xAI（Grok）",
   "baseUrl": "https://api.x.ai/v1",
   "format": "openai-chat",
   "website": "https://x.ai/",
@@ -1886,11 +1939,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "Grok"
  },
  {
   "id": "xiaomi-tokenplan",
-  "name": "Xiaomi MiMo Token Plan",
+  "name": "Xiaomi MiMo（小米）",
   "baseUrl": "https://token-plan-sgp.xiaomimimo.com/v1",
   "format": "openai-chat",
   "website": "https://mimo.xiaomi.com",
@@ -1920,7 +1974,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "小米"
  },
  {
   "id": "xkiro",
@@ -1938,11 +1993,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "zai",
-  "name": "Z.ai Coding Plan",
+  "name": "Z.ai（智谱 编程版）",
   "baseUrl": "https://api.z.ai/api/coding/paas/v4",
   "format": "openai-chat",
   "website": "https://z.ai/",
@@ -1984,11 +2040,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "智谱 编程版"
  },
  {
   "id": "zai_api",
-  "name": "Z.ai API",
+  "name": "Z.ai（智谱 API）",
   "baseUrl": "https://api.z.ai/api/paas/v4",
   "format": "openai-chat",
   "website": "https://z.ai/",
@@ -2034,7 +2091,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "智谱 API"
  },
  {
   "id": "zenmux",
@@ -2052,7 +2110,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "bazaarlink",
@@ -2185,11 +2244,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "byteplus",
-  "name": "BytePlus Ark",
+  "name": "BytePlus Ark（字节 海外版）",
   "baseUrl": "https://ark.ap-southeast.bytepluses.com/api/coding/v3",
   "format": "openai-chat",
   "website": "https://console.byteplus.com/ark",
@@ -2227,11 +2287,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "字节 海外版"
  },
  {
   "id": "gemini",
-  "name": "Gemini",
+  "name": "Gemini（谷歌）",
   "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
   "format": "openai-chat",
   "website": "https://ai.google.dev/",
@@ -2285,11 +2346,12 @@
    }
   ],
   "headers": {},
-  "authKind": "login"
+  "authKind": "login",
+  "nameZh": "谷歌"
  },
  {
   "id": "kilo",
-  "name": "Kilo.ai",
+  "name": "Kilo.ai（免费车道）",
   "baseUrl": "https://api.kilo.ai/api/gateway",
   "format": "openai-chat",
   "website": "https://kilo.ai/",
@@ -2329,7 +2391,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "免费车道"
  },
  {
   "id": "kimchi",
@@ -2375,11 +2438,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": ""
  },
  {
   "id": "nvidia_nim",
-  "name": "NVIDIA NIM",
+  "name": "NVIDIA NIM（英伟达）",
   "baseUrl": "https://integrate.api.nvidia.com/v1",
   "format": "openai-chat",
   "website": "https://build.nvidia.com/",
@@ -2422,11 +2486,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "英伟达"
  },
  {
   "id": "ollama_cloud",
-  "name": "Ollama Cloud",
+  "name": "Ollama Cloud（云端）",
   "baseUrl": "https://ollama.com/v1",
   "format": "openai-chat",
   "website": "https://ollama.com/",
@@ -2472,11 +2537,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "云端"
  },
  {
   "id": "open_router",
-  "name": "OpenRouter",
+  "name": "OpenRouter（聚合路由）",
   "baseUrl": "https://openrouter.ai/api/v1",
   "format": "openai-chat",
   "website": "https://openrouter.ai/",
@@ -2490,11 +2556,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "聚合路由"
  },
  {
   "id": "opencode_zen",
-  "name": "OpenCode Zen",
+  "name": "OpenCode Zen（免费车道）",
   "baseUrl": "https://opencode.ai/zen/v1",
   "format": "openai-chat",
   "website": "https://opencode.ai/zen",
@@ -2600,11 +2667,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "免费车道"
  },
  {
   "id": "llamacpp",
-  "name": "LLaMA.cpp",
+  "name": "llama.cpp（本机）",
   "baseUrl": "http://localhost:8080/v1",
   "format": "openai-chat",
   "website": "https://github.com/ggml-org/llama.cpp",
@@ -2613,11 +2681,12 @@
   "prefix": "llamacpp",
   "models": [],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "本机"
  },
  {
   "id": "lmstudio",
-  "name": "LM Studio",
+  "name": "LM Studio（本机）",
   "baseUrl": "http://localhost:1234/v1",
   "format": "openai-chat",
   "website": "https://lmstudio.ai/",
@@ -2626,11 +2695,12 @@
   "prefix": "lmstudio",
   "models": [],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "本机"
  },
  {
   "id": "ollama",
-  "name": "Ollama",
+  "name": "Ollama（本机）",
   "baseUrl": "http://localhost:11434/v1",
   "format": "openai-chat",
   "website": "https://ollama.com/",
@@ -2639,11 +2709,12 @@
   "prefix": "ollama",
   "models": [],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "本机"
  },
  {
   "id": "github_copilot",
-  "name": "GitHub Copilot",
+  "name": "GitHub Copilot（微软）",
   "baseUrl": "https://api.githubcopilot.com",
   "format": "openai-chat",
   "website": "https://github.com/features/copilot",
@@ -2721,11 +2792,12 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "微软"
  },
  {
   "id": "openai",
-  "name": "OpenAI / ChatGPT",
+  "name": "OpenAI（官方）",
   "baseUrl": "https://chatgpt.com/backend-api/codex",
   "format": "openai-responses",
   "website": "https://openai.com/",
@@ -2767,7 +2839,8 @@
    }
   ],
   "headers": {},
-  "authKind": "apikey"
+  "authKind": "apikey",
+  "nameZh": "官方"
  },
  {
   "id": "loomy",
@@ -2781,11 +2854,12 @@
   "models": [],
   "headers": {},
   "checkinKind": "loomy",
-  "authKind": "login"
+  "authKind": "login",
+  "nameZh": "讯飞"
  },
  {
   "id": "lobsterai",
-  "name": "LobsterAI（有道）",
+  "name": "LobsterAI（有道龙虾）",
   "baseUrl": "https://lobsterai-server.youdao.com",
   "format": "openai-chat",
   "website": "https://lobsterai.youdao.com",
@@ -2795,11 +2869,12 @@
   "models": [],
   "headers": {},
   "checkinKind": "lobsterai",
-  "authKind": "login"
+  "authKind": "login",
+  "nameZh": "有道龙虾"
  },
  {
   "id": "qoder",
-  "name": "Qoder（阿里系）",
+  "name": "Qoder（阿里）",
   "baseUrl": "https://openapi.qoder.sh",
   "format": "openai-chat",
   "website": "https://qoder.sh",
@@ -2808,7 +2883,8 @@
   "prefix": "qoder",
   "models": [],
   "headers": {},
-  "authKind": "login"
+  "authKind": "login",
+  "nameZh": "阿里"
  },
  {
   "id": "trae",
@@ -2821,11 +2897,12 @@
   "prefix": "trae",
   "models": [],
   "headers": {},
-  "authKind": "login"
+  "authKind": "login",
+  "nameZh": "字节"
  },
  {
   "id": "cline",
-  "name": "Cline",
+  "name": "Cline（开源编程插件）",
   "baseUrl": "https://api.cline.bot",
   "format": "openai-chat",
   "website": "https://app.cline.bot",
@@ -2834,6 +2911,7 @@
   "prefix": "cline",
   "models": [],
   "headers": {},
-  "authKind": "login"
+  "authKind": "login",
+  "nameZh": "开源编程插件"
  }
 ]
