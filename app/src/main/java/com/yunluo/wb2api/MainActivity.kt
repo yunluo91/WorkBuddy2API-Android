@@ -708,15 +708,21 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(booting, boardSub) {
             web = holder.web
             if (booting) return@LaunchedEffect
-            val target = if (boardSub == "channels") {
-                consoleUrl() + "?tab=channels"
+            /* WB-BOARD-NAV-FIX
+               原来这里的条件写坏了：切回「面板」时判断的是
+               `holder.web.url == null` —— 可那时 WebView 早就加载过
+               渠道页了，url 不是 null，于是什么都不做，人就一直卡在渠道页。
+               现在改成看「当前在不在目标页」，不在就切过去。 */
+            val cur = holder.web.url.orEmpty()
+            if (boardSub == "channels") {
+                val want = consoleUrl() + "?tab=channels"
+                if (cur != want) holder.web.loadUrl(want)
             } else {
-                loginUrl()
-            }
-            if (boardSub == "panel" && holder.web.url == null) {
-                holder.web.loadUrl(target)
-            } else if (boardSub == "channels") {
-                holder.web.loadUrl(target)
+                val want = loginUrl()
+                // 渠道页的地址一定带 tab=channels；不是它就是面板
+                if (cur.isEmpty() || cur.contains("tab=channels")) {
+                    holder.web.loadUrl(want)
+                }
             }
         }
     }

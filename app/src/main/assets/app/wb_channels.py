@@ -141,6 +141,7 @@ def save(accounts_dir, rows):
             "cookieAt": str(r.get("cookieAt") or ""),
             "website": str(r.get("website") or ""),
             "checkinKind": str(r.get("checkinKind") or ""),
+            "authKind": str(r.get("authKind") or "apikey"),
             "token": str(r.get("token") or ""),
             "refreshToken": str(r.get("refreshToken") or ""),
             "tokenAt": str(r.get("tokenAt") or ""),
@@ -601,6 +602,7 @@ def describe(rows):
         "tokenAt": c.get("tokenAt") or "",
         "cookieAt": c.get("cookieAt") or "",
         "hasCheckin": bool((c.get("checkin") or {}).get("path")),
+        "authKind": c.get("authKind") or "apikey",
         "website": str(c.get("website") or ""),
         "models": len(c.get("models") or []),
     } for c in rows]

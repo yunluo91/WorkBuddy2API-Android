@@ -1818,19 +1818,29 @@ function renderChannels(){
       '<div class="chmeta">' + esc(r.baseUrl || '') +
         (r.models ? '　·　' + r.models + ' 个模型' : '') +
         (r.hasKey ? '' : '　·　没填 key') + '</div>' +
-      '<div class="chkeyrow">' +
-        '<input type="password" placeholder="粘贴 API Key（留空表示不需要）" ' +
-          'id="chk-' + esc(r.id) + '">' +
-        '<button class="btn ghost mini" onclick="saveChannelKey(\'' + esc(r.id) + '\')">保存</button>' +
-      '</div>' +
-      '<div class="chkeyrow">' +
-        '<button class="btn ghost mini" onclick="openChannelLogin(\'' + esc(r.id) + '\', \'' +
-          esc(r.website || '') + '\')">登录</button>' +
-        '<button class="btn ghost mini" onclick="channelCheckin(\'' + esc(r.id) + '\')">签到</button>' +
-        '<span class="chstat" style="align-self:center">' +
-          (r.hasCookie ? ('已登录 · ' + esc(r.cookieAt || '') ) : '未登录') +
-        '</span>' +
-      '</div>' +
+      /* WB-CHANNEL-UIFIX
+         登录型渠道（插件里走 OAuth/浏览器登录的那些）不显示 API Key 输入框 ——
+         它们本来就该登录，摆一个填 key 的框只会让人以为要自己搞 key。
+         只有 API Key 型渠道才显示输入框。 */
+      (r.authKind === 'login'
+        ? ('<div class="chkeyrow">' +
+             '<button class="btn mini" onclick="openChannelLogin(\'' + esc(r.id) + '\', \'' +
+               esc(r.website || '') + '\')">登录</button>' +
+             '<button class="btn ghost mini" onclick="channelCheckin(\'' + esc(r.id) + '\')">签到</button>' +
+             '<span class="chstat" style="align-self:center">' +
+               (r.hasToken ? ('已登录 · ' + esc(r.tokenAt || '') )
+                           : (r.hasCookie ? ('已登录 · ' + esc(r.cookieAt || '')) : '未登录')) +
+             '</span>' +
+           '</div>')
+        : ('<div class="chkeyrow">' +
+             '<input type="password" placeholder="粘贴 API Key（留空表示不需要）" ' +
+               'id="chk-' + esc(r.id) + '">' +
+             '<button class="btn ghost mini" onclick="saveChannelKey(\'' + esc(r.id) + '\')">保存</button>' +
+           '</div>' +
+           '<div class="chkeyrow">' +
+             '<span class="chstat" style="align-self:center">' +
+               (r.hasKey ? '已填 Key' : '未填 Key') + '</span>' +
+           '</div>')) +
     '</div>';
   }).join('');
 }

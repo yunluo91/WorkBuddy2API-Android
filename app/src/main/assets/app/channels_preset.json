@@ -9,7 +9,8 @@
   "key": "",
   "prefix": "ofm",
   "models": [],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "agnes",
@@ -26,7 +27,8 @@
     "name": "Agnes 2.0 Flash"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "alibaba_cloud",
@@ -67,7 +69,8 @@
     "name": "GLM 4.7"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "anthropic",
@@ -92,7 +95,8 @@
     "name": "Claude 3.5 Sonnet"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "baidu",
@@ -140,7 +144,8 @@
     "contextWindow": 262144
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "bedrock",
@@ -157,7 +162,8 @@
     "name": "GPT-OSS 120B (Bedrock)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "cerebras",
@@ -194,7 +200,8 @@
     "name": "Qwen3 32B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "cheaperinference",
@@ -211,7 +218,8 @@
     "name": "GPT-5.4 Mini"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "chutes",
@@ -228,7 +236,8 @@
     "name": "Qwen3 32B TEE"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "cline_pass",
@@ -285,7 +294,8 @@
     "name": "Kimi K3 (ClinePass)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "cohere",
@@ -314,7 +324,8 @@
     "name": "Command A Plus"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "deepinfra",
@@ -331,7 +342,8 @@
     "name": "DeepSeek V4 Flash"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "deepseek",
@@ -376,7 +388,8 @@
     "name": "DeepSeek V3.2 Reasoner"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "experiential",
@@ -393,7 +406,8 @@
     "name": "Union Alpha"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "featherless",
@@ -438,7 +452,8 @@
     "name": "Qwen3 32B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "fireworks",
@@ -463,7 +478,8 @@
     "name": "Qwen3 235B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "fleetrelay_t1",
@@ -484,7 +500,8 @@
     "name": "GPT-6 Astra"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "glm",
@@ -529,7 +546,8 @@
     "name": "GLM 4.6V (Vision)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "glm-cn",
@@ -582,7 +600,8 @@
     "name": "GLM-4.5-Air"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "groq",
@@ -611,7 +630,8 @@
     "name": "GPT-OSS 120B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "huggingface",
@@ -628,7 +648,8 @@
     "name": "Qwen3 Coder 480B A35B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "hyperbolic",
@@ -673,7 +694,8 @@
     "name": "Hermes 3 70B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "kimi",
@@ -690,7 +712,8 @@
     "name": "Kimi K2.5"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "kimi_code",
@@ -743,7 +766,8 @@
     "name": "Kimi Latest"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "lightning",
@@ -760,7 +784,8 @@
     "name": "Qwen3.8 27B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "llm7",
@@ -810,7 +835,8 @@
     "name": "LLM7 Pro"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "minimax",
@@ -839,7 +865,8 @@
     "name": "MiniMax M2.1"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "login"
  },
  {
   "id": "minimax-cn",
@@ -868,7 +895,8 @@
     "name": "MiniMax M2.1"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "login"
  },
  {
   "id": "mistral",
@@ -897,7 +925,8 @@
     "name": "Devstral Small"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "mistral_codestral",
@@ -914,7 +943,8 @@
     "name": "Codestral"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "morph",
@@ -955,7 +985,8 @@
     "contextWindow": 1048576
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "nararoute",
@@ -972,7 +1003,8 @@
     "name": "Kimi K3 (free)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "nebius",
@@ -993,7 +1025,8 @@
     "name": "Qwen3 30B A3B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "novita",
@@ -1010,7 +1043,8 @@
     "name": "DeepSeek V4 Flash 0731"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "openai_api",
@@ -1111,7 +1145,8 @@
     "name": "GPT-5.6 Sol"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "opencode_go",
@@ -1220,7 +1255,8 @@
     "name": "Hy3"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "opper",
@@ -1237,7 +1273,8 @@
     "name": "Claude Sonnet 4.6"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "orcarouter",
@@ -1254,7 +1291,8 @@
     "name": "DeepSeek V4 Flash (free)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "perplexity",
@@ -1275,7 +1313,8 @@
     "name": "Sonar"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "poolside",
@@ -1296,7 +1335,8 @@
     "name": "Laguna XS 2.1"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "qwencloud",
@@ -1333,7 +1373,8 @@
     "name": "DeepSeek V4 Pro"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "qwencloud_coding",
@@ -1374,7 +1415,8 @@
     "name": "GLM 4.7"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "sambanova",
@@ -1391,7 +1433,8 @@
     "name": "Llama 3.3 70B Instruct"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "scaleway",
@@ -1408,7 +1451,8 @@
     "name": "DeepSeek V4 Flash"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "siliconflow",
@@ -1489,7 +1533,8 @@
     "name": "Qwen3 32B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "tencent",
@@ -1512,7 +1557,8 @@
     "contextWindow": 256000
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "together",
@@ -1545,7 +1591,8 @@
     "name": "GLM-5.2"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "tokenrouter",
@@ -1646,7 +1693,8 @@
     "name": "Grok 4.5"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "venice",
@@ -1695,7 +1743,8 @@
     "name": "Mistral Small 3.2 24B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "vercel",
@@ -1712,7 +1761,8 @@
     "name": "GPT-5.5 (Vercel)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "volcengine-ark",
@@ -1761,7 +1811,8 @@
     "name": "Kimi-K2.6"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "wafer",
@@ -1778,7 +1829,8 @@
     "name": "DeepSeek V4 Pro (Wafer)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "wandb",
@@ -1795,7 +1847,8 @@
     "name": "GPT-OSS 20B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "xai",
@@ -1832,7 +1885,8 @@
     "name": "Grok 3"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "xiaomi-tokenplan",
@@ -1865,7 +1919,8 @@
     "name": "MiMo V2 Omni"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "xkiro",
@@ -1882,7 +1937,8 @@
     "name": "Qwen3.7 Flash (free)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "zai",
@@ -1927,7 +1983,8 @@
     "name": "GLM 4.6V (Vision)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "zai_api",
@@ -1976,7 +2033,8 @@
     "name": "GLM 4.7 Flash"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "zenmux",
@@ -1993,7 +2051,8 @@
     "name": "DeepSeek V4 Flash (free)"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "bazaarlink",
@@ -2125,7 +2184,8 @@
     "contextWindow": 1000000
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "byteplus",
@@ -2166,7 +2226,8 @@
     "name": "GPT-OSS-120B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "gemini",
@@ -2223,7 +2284,8 @@
     "name": "Gemma 4 31B IT"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "login"
  },
  {
   "id": "kilo",
@@ -2266,7 +2328,8 @@
     "contextWindow": 1000000
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "kimchi",
@@ -2311,7 +2374,8 @@
     "name": "Claude Sonnet 4.6"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "nvidia_nim",
@@ -2357,7 +2421,8 @@
     "contextWindow": 131072
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "ollama_cloud",
@@ -2406,7 +2471,8 @@
     "name": "Qwen3 Coder 480B"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "open_router",
@@ -2423,7 +2489,8 @@
     "name": "OpenRouter Free Router"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "opencode_zen",
@@ -2532,7 +2599,8 @@
     "name": "GPT 5.5"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "llamacpp",
@@ -2544,7 +2612,8 @@
   "key": "",
   "prefix": "llamacpp",
   "models": [],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "lmstudio",
@@ -2556,7 +2625,8 @@
   "key": "",
   "prefix": "lmstudio",
   "models": [],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "ollama",
@@ -2568,7 +2638,8 @@
   "key": "",
   "prefix": "ollama",
   "models": [],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "github_copilot",
@@ -2649,7 +2720,8 @@
     "name": "GoldenEye"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "openai",
@@ -2694,7 +2766,8 @@
     "name": "GPT 5.3 Codex Spark"
    }
   ],
-  "headers": {}
+  "headers": {},
+  "authKind": "apikey"
  },
  {
   "id": "loomy",
@@ -2707,7 +2780,8 @@
   "prefix": "loomy",
   "models": [],
   "headers": {},
-  "checkinKind": "loomy"
+  "checkinKind": "loomy",
+  "authKind": "login"
  },
  {
   "id": "lobsterai",
@@ -2720,6 +2794,46 @@
   "prefix": "lobsterai",
   "models": [],
   "headers": {},
-  "checkinKind": "lobsterai"
+  "checkinKind": "lobsterai",
+  "authKind": "login"
+ },
+ {
+  "id": "qoder",
+  "name": "Qoder（阿里系）",
+  "baseUrl": "https://openapi.qoder.sh",
+  "format": "openai-chat",
+  "website": "https://qoder.sh",
+  "enabled": false,
+  "key": "",
+  "prefix": "qoder",
+  "models": [],
+  "headers": {},
+  "authKind": "login"
+ },
+ {
+  "id": "trae",
+  "name": "TRAE（字节）",
+  "baseUrl": "https://api.trae.cn",
+  "format": "openai-chat",
+  "website": "https://www.trae.cn",
+  "enabled": false,
+  "key": "",
+  "prefix": "trae",
+  "models": [],
+  "headers": {},
+  "authKind": "login"
+ },
+ {
+  "id": "cline",
+  "name": "Cline",
+  "baseUrl": "https://api.cline.bot",
+  "format": "openai-chat",
+  "website": "https://app.cline.bot",
+  "enabled": false,
+  "key": "",
+  "prefix": "cline",
+  "models": [],
+  "headers": {},
+  "authKind": "login"
  }
 ]
