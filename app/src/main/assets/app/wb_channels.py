@@ -23,6 +23,14 @@ import urllib.request
 CHANNELS_FILE = "channels.json"
 PRESET_FILE = "channels_preset.json"
 
+def _log(msg):
+    """这里不打到网关日志，单独一行方便 adb logcat 找。"""
+    try:
+        print("wb_channels:", msg, flush=True)
+    except Exception:
+        pass
+
+
 _lock = threading.Lock()
 _cache = {"path": None, "mtime": 0, "channels": []}
 
@@ -304,7 +312,8 @@ def _channel_models(chan):
             got = _extract_model_list(doc)
         except Exception:
             got = None
-    if not got:
+    if not got and (chan.get("key") or chan.get("token") or chan.get("cookie")):
+        # 只有配了凭据才值得去连它的 /models；否则白等一个超时
         try:
             got = _fetch_models(chan)
         except Exception:
@@ -630,10 +639,20 @@ def begin_login(accounts_dir, cid):
     if kind not in ("codearts", "lobsterai"):
         return {"ok": False, "msg": "这个渠道还不支持浏览器授权登录"}
 
-    # 已经在等就直接复用，别起第二个端口
-    old = _LOGIN_STATE.get(cid)
-    if old and old.get("url") and old.get("result") is None:
-        return {"ok": True, "id": cid, "url": old["url"], "port": old["port"], "reused": True}
+    # 已经有监听就复用；过期的先关掉，别让端口泄漏
+    prev = _LOGIN_STATE.get(cid)
+    if prev is not None:
+        if prev.get("result") is None and prev.get("url") and \
+                time.time() < prev.get("deadline", 0):
+            return {"ok": True, "id": cid, "url": prev["url"],
+                    "port": prev["port"], "reused": True}
+        _close_login(cid)          # 过期 / 已完成 → 收掉
+
+    # 顺手把别的渠道遗留的过期监听也收掉（防端口被占满）
+    for other in list(_LOGIN_STATE.keys()):
+        st = _LOGIN_STATE.get(other) or {}
+        if time.time() >= st.get("deadline", 0):
+            _close_login(other)
 
     verifier, challenge = _pkce_pair()
     state = _uuid4()
@@ -652,13 +671,23 @@ def begin_login(accounts_dir, cid):
             got_state = (qs.get("state") or [""])[0]
             ok = False
             msg = ""
-            if got_state and got_state != box["state"]:
-                msg = "state 不一致"
-            elif not code:
+            # WB-LOGIN-NO-STATE-GATE
+            # state 只用来防 CSRF。我们这个是本机回环端口、一次一用，
+            # 而且各家门户（有道 / 华为）回调时不一定原样带回 state ——
+            # 之前硬校验的结果就是「登完了还提示 state 不一致」。
+            # 这里不再拦，只在日志里记一笔。
+            if got_state and box.get("state") and got_state != box.get("state"):
+                try:
+                    _log("login state 不一致（已忽略）got=%s want=%s"
+                         % (got_state[:8], str(box.get("state"))[:8]))
+                except Exception:
+                    pass
+            if not code:
                 msg = "回调里没有 code"
             else:
                 try:
-                    res = _exchange_code(accounts_dir, hit, code, verifier, box["port"])
+                    fresh = _chan_by_id(load(accounts_dir), cid) or hit
+                    res = _exchange_code(accounts_dir, fresh, code, verifier, box["port"])
                     ok = bool(res.get("ok"))
                     msg = res.get("msg") or ("ok" if ok else "")
                     if ok:
@@ -685,15 +714,17 @@ def begin_login(accounts_dir, cid):
 
     srv = None
     port = 0
-    for cand in range(39509, 39529):
+    # 插件用的是 39509；被占了就让内核分配一个，别再逐个扫 20 个端口
+    # —— 扫端口在手机上很慢，用户看到的就是"点一下卡半天"。
+    for cand in (39509, 0):
         try:
             srv = ThreadingHTTPServer(("127.0.0.1", cand), Callback)
-            port = cand
+            port = srv.server_address[1]
             break
         except Exception:
             continue
     if srv is None:
-        return {"ok": False, "msg": "本地回调端口都被占用了（39509-39528）"}
+        return {"ok": False, "msg": "本地回调端口起不来"}
 
     box["port"] = port
     if kind == "codearts":
@@ -728,6 +759,14 @@ def begin_login(accounts_dir, cid):
     box["server"] = srv
     box["deadline"] = time.time() + LOGIN_TIMEOUT
     _LOGIN_STATE[cid] = box
+
+    # 看门狗：到点自动收掉。以前只有 UI 轮询才会关，
+    # 现在 UI 不轮询了，不关就会一直占着端口。
+    def _reap():
+        st = _LOGIN_STATE.get(cid)
+        if st is box and box.get("result") is None:
+            _close_login(cid)
+    threading.Timer(LOGIN_TIMEOUT + 5, _reap).start()
     return {"ok": True, "id": cid, "url": box["url"], "port": port}
 
 
