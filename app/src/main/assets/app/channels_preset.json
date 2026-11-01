@@ -2913,5 +2913,20 @@
   "headers": {},
   "authKind": "login",
   "nameZh": "开源编程插件"
+ },
+ {
+  "id": "codearts",
+  "name": "CodeArts（华为云）",
+  "baseUrl": "https://snap-access.cn-north-4.myhuaweicloud.com",
+  "format": "openai-chat",
+  "website": "https://codearts.huaweicloud.com",
+  "enabled": false,
+  "key": "",
+  "prefix": "codearts",
+  "models": [],
+  "headers": {},
+  "authKind": "login",
+  "checkinKind": "codearts",
+  "nameZh": "华为云"
  }
 ]

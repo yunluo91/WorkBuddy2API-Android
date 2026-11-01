@@ -1888,16 +1888,26 @@ async function addChannel(){
 
 /* WB-CHANNEL-LOGIN 打开 App 里的登录窗口（走 JS 桥） */
 async function openChannelLogin(id, site){
-  /* 先问网关要 OAuth 登录地址；不支持就退回「直接开站点首页」。 */
+  /* WB-BROWSER-LOGIN
+     先请网关起一次「浏览器授权」：它在本地开个端口等回调，
+     回给我们授权地址。App 那边开个等待页把地址丢给浏览器，
+     授权完自动完成 —— 跟插件一模一样。
+     网关说这个渠道不支持浏览器授权，才退回「直接开站点首页抓 Cookie」。 */
   try{
-    var d = await fetch('/api/channels/login-url', {
+    var d = await fetch('/api/channels/begin-login', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({id: id})
     }).then(function(r){ return r.json(); });
     if(d && d.ok && d.url){
-      window.WbBridge.openLogin(id, d.url);
+      var row = (CH.rows || []).filter(function(x){ return x.id === id; })[0] || {};
+      if(window.WbBridge && window.WbBridge.beginLogin){
+        window.WbBridge.beginLogin(id, row.name || id, d.url);
+      }else{
+        window.WbBridge.openLogin(id, d.url);
+      }
       return;
     }
+    if(d && d.msg) toast(d.msg, 'bad');
   }catch(e){}
   openChannelLoginPlain(id, site);
 }
@@ -3201,6 +3211,29 @@ class Handler(BaseHTTPRequestHandler):
                             s["context"] = 0
             save_chat(data)
             _json_send(self, 200, {"ok": True})
+            return
+        if path == "/api/channels/begin-login":
+            # WB-BROWSER-LOGIN 起一次浏览器授权：本地监听 + 返回授权地址
+            if not self._token_ok():
+                self._deny()
+                return
+            try:
+                body2 = body if isinstance(body, dict) else {}
+                _json_send(self, 200, wb_channels.begin_login(
+                    _accounts_dir(), str(body2.get("id") or "").strip()))
+            except Exception as exc:
+                _json_send(self, 200, {"ok": False, "msg": str(exc)})
+            return
+        if path == "/api/channels/login-state":
+            if not self._token_ok():
+                self._deny()
+                return
+            try:
+                body2 = body if isinstance(body, dict) else {}
+                _json_send(self, 200, wb_channels.login_state(
+                    _accounts_dir(), str(body2.get("id") or "").strip()))
+            except Exception as exc:
+                _json_send(self, 200, {"ok": False, "pending": False, "msg": str(exc)})
             return
         if path == "/api/channels/login-url":
             if not self._token_ok():

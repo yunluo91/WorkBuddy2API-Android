@@ -18,6 +18,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -31,6 +32,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import java.io.File
@@ -290,6 +294,12 @@ class MainActivity : ComponentActivity() {
     private var channelLoginId by mutableStateOf("")
     private var channelLoginUrl by mutableStateOf("")
     private var channelLoginMsg by mutableStateOf("")
+
+    /* WB-BROWSER-LOGIN 浏览器授权等待页的状态。 */
+    private var loginWaitId by mutableStateOf("")
+    private var loginWaitName by mutableStateOf("")
+    private var loginWaitUrl by mutableStateOf("")
+    private var loginWaitMsg by mutableStateOf("已打开登录页，等待授权…（最长等待 10 分钟）")
 
     /** 看板的两个子页："panel" = 网关面板，"channels" = 渠道账号（登录/签到）。 */
     private var boardSub by mutableStateOf("panel")
@@ -582,6 +592,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // WB-BROWSER-LOGIN 浏览器授权等待页（盖在最上层）
+            if (loginWaitId.isNotEmpty()) {
+                ChannelLoginWaiting()
+            }
+
             // WB-CHANNEL-LOGIN 渠道登录窗口（盖在最上层）
             if (channelLoginId.isNotEmpty()) {
                 ChannelLoginOverlay()
@@ -724,6 +739,154 @@ class MainActivity : ComponentActivity() {
                     holder.web.loadUrl(want)
                 }
             }
+        }
+    }
+
+    /**
+     * WB-BROWSER-LOGIN 浏览器授权等待页。
+     *
+     * 照插件那套做法：网关在 127.0.0.1 上起一个临时端口等回调，
+     * 这里只负责把授权地址丢给系统浏览器，然后轮询「好了没」。
+     * 好了自动关掉，不需要用户复制任何东西。
+     */
+    @Composable
+    private fun ChannelLoginWaiting() {
+        fun openInBrowser() {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(loginWaitUrl)))
+            } catch (_: Throwable) {
+                loginWaitMsg = "打不开浏览器，请手动复制下面的地址"
+            }
+        }
+
+        // 轮询登录状态
+        LaunchedEffect(loginWaitId) {
+            while (loginWaitId.isNotEmpty()) {
+                delay(2000)
+                val done: Pair<Boolean, String>? = withContext(Dispatchers.IO) {
+                    queryLoginState(loginWaitId)
+                }
+                if (done != null) {
+                    if (done.first) {
+                        loginWaitId = ""
+                        toast("${loginWaitName} 登录成功")
+                        refreshChannelsPage()
+                        break
+                    } else if (done.second.isNotEmpty()) {
+                        loginWaitMsg = "没完成：${done.second}"
+                        break
+                    }
+                }
+            }
+        }
+
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(WbBg)
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(40.dp))
+            Text(
+                text = "登录 ${loginWaitName}",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = WbText,
+            )
+            Spacer(Modifier.height(18.dp))
+
+            Text(
+                text = "1　在浏览器中完成登录（若没有自动打开，点下面的按钮）",
+                fontSize = 13.sp,
+                color = WbMuted,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "2　登录成功后本页会自动完成，无需复制任何东西",
+                fontSize = 13.sp,
+                color = WbMuted,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(16.dp))
+
+            Box(
+                modifier = Modifier
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .background(WbCard2)
+                    .border(1.dp, WbLine, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .clickable { openInBrowser() }
+                    .padding(horizontal = 18.dp, vertical = 11.dp)
+            ) {
+                Text("打开登录页", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = WbAccent)
+            }
+
+            Spacer(Modifier.height(18.dp))
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = loginWaitMsg,
+                fontSize = 12.sp,
+                color = WbMuted,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(Modifier.height(10.dp))
+            SelectionContainer {
+                Text(
+                    text = loginWaitUrl,
+                    fontSize = 10.sp,
+                    color = WbMuted.copy(alpha = 0.7f),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            Spacer(Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .background(WbCard)
+                    .clickable {
+                        loginWaitId = ""
+                        loginWaitMsg = "已打开登录页，等待授权…（最长等待 10 分钟）"
+                    }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("取消", fontSize = 14.sp, color = WbMuted)
+            }
+        }
+    }
+
+    /** 查一次登录状态；返回 (是否成功, 失败原因)。进行中返回 null。 */
+    private fun queryLoginState(channelId: String): Pair<Boolean, String>? {
+        var conn: java.net.HttpURLConnection? = null
+        return try {
+            val url = java.net.URL(consoleUrl() + "api/channels/login-state")
+            conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 6000
+                readTimeout = 10000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("X-WB-Token", WbApi.token)
+            }
+            conn.outputStream.use {
+                it.write(org.json.JSONObject().put("id", channelId).toString().toByteArray())
+            }
+            val text = (if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream)
+                ?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val doc = runCatching { org.json.JSONObject(text) }.getOrNull()
+            if (doc == null) return null
+            val pending = doc.optBoolean("pending", false)
+            if (pending) null
+            else Pair(doc.optBoolean("ok", false), doc.optString("msg"))
+        } catch (_: Throwable) {
+            null
+        } finally {
+            runCatching { conn?.disconnect() }
         }
     }
 
@@ -940,11 +1103,7 @@ class MainActivity : ComponentActivity() {
                         channelLoginId = ""
                         channelLoginUrl = ""
                         toast("渠道 $channelId 登录成功")
-                        toolWebReload()
-                        try {
-                            web?.evaluateJavascript("pick('channels')", null)
-                        } catch (_: Throwable) {
-                        }
+                        refreshChannelsPage()
                     } else {
                         channelLoginMsg = "换取凭据失败：" +
                                 (doc?.optString("msg") ?: text.take(120))
@@ -991,7 +1150,7 @@ class MainActivity : ComponentActivity() {
                         channelLoginId = ""
                         channelLoginUrl = ""
                         toast("渠道 $channelId 登录凭据已保存")
-                        toolWebReload()
+                        refreshChannelsPage()
                     } else {
                         channelLoginMsg = "保存失败：HTTP $code ${text.take(120)}"
                     }
@@ -1005,9 +1164,15 @@ class MainActivity : ComponentActivity() {
     }
 
     /** 存完凭据让控制台网页刷新一下，渠道页的状态才更新。 */
-    private fun toolWebReload() {
+    /**
+     * WB-CHANNELS-REFRESH 保存凭据后刷新渠道页。
+     *
+     * 渠道页在看板那个 WebView 里（不在控制台），之前这里刷的是
+     * toolHolderRef —— 刷错对象了，所以用户看到「已保存」但列表仍是「未登录」。
+     */
+    private fun refreshChannelsPage() {
         try {
-            toolHolderRef?.web?.evaluateJavascript("pick('channels')", null)
+            web?.evaluateJavascript("loadChannels()", null)
         } catch (_: Throwable) {
         }
     }
@@ -3607,6 +3772,29 @@ class MainActivity : ComponentActivity() {
                 channelLoginId = cid
                 channelLoginUrl = (url ?: "").trim().ifEmpty { "https://www.baidu.com" }
                 channelLoginMsg = ""
+            }
+        }
+
+        /**
+         * WB-BROWSER-LOGIN 渠道页点了「登录」→ 网关已经起好本地回调端口，
+         * 这里只负责把等待页拉起来并把授权地址丢给浏览器。
+         */
+        @android.webkit.JavascriptInterface
+        fun beginLogin(id: String?, name: String?, url: String?) {
+            val cid = (id ?: "").trim()
+            if (cid.isEmpty()) return
+            val u = (url ?: "").trim()
+            if (u.isEmpty()) return
+            runOnUiThread {
+                loginWaitId = cid
+                loginWaitName = (name ?: cid).trim().ifEmpty { cid }
+                loginWaitUrl = u
+                loginWaitMsg = "已打开登录页，等待授权…（最长等待 10 分钟）"
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(u)))
+                } catch (_: Throwable) {
+                    loginWaitMsg = "打不开浏览器，请手动复制下面的地址"
+                }
             }
         }
 

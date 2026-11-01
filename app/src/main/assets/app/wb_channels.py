@@ -229,8 +229,54 @@ def _fetch_models(chan, timeout=15):
     return out
 
 
+# 各家的模型清单接口不一样，登记在这里。
+# 没登记的就退回 OpenAI 习惯的 {baseUrl}/models。
+MODEL_KINDS = {
+    "lobsterai": "/api/models/available",
+    "loomy": "/models",
+}
+
+
+def _extract_model_list(doc):
+    """从各家五花八门的响应里把模型数组挖出来。
+
+    认得的形状：
+      [ {...}, ... ]
+      {data: [...]}  {models: [...]}  {list: [...]}
+      {data: {models: [...]}}  {result: {list: [...]}}
+    每个元素取 id / model / name 里第一个像 id 的字段。
+    """
+    cur = doc
+    for _ in range(4):
+        if isinstance(cur, list):
+            out = []
+            for m in cur:
+                if isinstance(m, str):
+                    out.append({"id": m})
+                elif isinstance(m, dict):
+                    mid = (m.get("id") or m.get("model") or m.get("modelId")
+                           or m.get("name") or m.get("slug"))
+                    if isinstance(mid, str) and mid:
+                        item = {"id": mid}
+                        nm = m.get("displayName") or m.get("label")
+                        if isinstance(nm, str) and nm:
+                            item["name"] = nm
+                        out.append(item)
+            return out
+        if isinstance(cur, dict):
+            for k in ("data", "models", "list", "result", "items", "rows"):
+                if k in cur:
+                    cur = cur[k]
+                    break
+            else:
+                return []
+        else:
+            return []
+    return []
+
+
 def _channel_models(chan):
-    """静态清单优先；没有就现场拉一次，缓存 10 分钟。"""
+    """静态清单优先；没有就按渠道类型去它的接口拉，缓存 10 分钟。"""
     if chan.get("models"):
         return chan["models"]
     cid = chan.get("id")
@@ -238,14 +284,37 @@ def _channel_models(chan):
     now = time.time()
     if hit and now - hit[0] < MODEL_CACHE_TTL:
         return hit[1]
-    try:
-        got = _fetch_models(chan)
-        _model_cache[cid] = (now, got)
-        return got
-    except Exception:
+
+    kind = str(chan.get("checkinKind") or chan.get("authKind") or "")
+    path = MODEL_KINDS.get(kind)
+    got = None
+    if path:
+        try:
+            q = ""
+            if kind == "lobsterai":
+                # 这个接口要 keyfrom 参数，缺了会被拒
+                ses = chan.get("oauthSession") or {}
+                from urllib.parse import urlencode
+                q = "?" + urlencode({
+                    "uuid": str(ses.get("uuid") or ""),
+                    "firstKeyfrom": str(ses.get("firstKeyfrom") or ""),
+                    "version": _lobsterai_version(),
+                })
+            doc = request(chan, path + q, timeout=20)
+            got = _extract_model_list(doc)
+        except Exception:
+            got = None
+    if not got:
+        try:
+            got = _fetch_models(chan)
+        except Exception:
+            got = None
+    if got is None:
         if hit:
             return hit[1]
         return []
+    _model_cache[cid] = (now, got)
+    return got
 
 
 def as_models(rows):
@@ -443,23 +512,24 @@ def login_url(accounts_dir, cid):
 
 
 def login_callback(accounts_dir, cid, code, state=""):
-    """回调拿到 code → 换 token → 存进渠道。
-
-    换到的 accessToken 之后所有请求都用 Authorization: Bearer，
-    refreshToken 留着续期（续期逻辑下一轮再做）。
-    """
+    """回调拿到 code → 换 token → 存进渠道。"""
     rows = load(accounts_dir)
     hit = _chan_by_id(rows, cid)
     if hit is None:
         return {"ok": False, "msg": "没有这个渠道: %s" % cid}
     if not code:
         return {"ok": False, "msg": "回调里没有 code"}
+    res = exchange_code(accounts_dir, hit, code, state)
+    return res
 
-    kind = str(hit.get("checkinKind") or hit.get("authKind") or "")
+
+def exchange_code(accounts_dir, chan, code, state=""):
+    """用授权码换 token 并入库。按渠道类型分派。"""
+    kind = str(chan.get("checkinKind") or "")
     if kind != "lobsterai":
-        return {"ok": False, "msg": "这个渠道还不支持换取凭据"}
+        return {"ok": False, "msg": "%s 的换 token 还没实现" % (kind or "这个渠道")}
 
-    session = hit.get("oauthSession") or {}
+    session = chan.get("oauthSession") or {}
     if state and session.get("state") and state != session.get("state"):
         return {"ok": False, "msg": "state 对不上（可能不是这次登录的回调）"}
 
@@ -471,7 +541,7 @@ def login_callback(accounts_dir, cid, code, state=""):
         "uuid": str(session.get("uuid") or _uuid4()),
         "version": version,
     }
-    url = hit["baseUrl"].rstrip("/") + "/api/auth/exchange"
+    url = chan["baseUrl"].rstrip("/") + "/api/auth/exchange"
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "application/json")
@@ -494,17 +564,204 @@ def login_callback(accounts_dir, cid, code, state=""):
     payload = doc.get("data") if isinstance(doc, dict) else None
     if not isinstance(payload, dict):
         payload = doc if isinstance(doc, dict) else {}
-    token = (payload.get("accessToken") or payload.get("access_token")
-             or (doc.get("data") or {}).get("accessToken") or "")
+    token = (payload.get("accessToken") or payload.get("access_token") or "")
     if not token:
-        return {"ok": False, "msg": "没拿到 accessToken（version=%s）：%s" % (version, raw[:200])}
+        return {"ok": False, "msg": "没拿到 accessToken（version=%s）：%s"
+                % (version, raw[:200])}
 
+    rows = load(accounts_dir)
+    hit = _chan_by_id(rows, chan.get("id"))
+    if hit is None:
+        return {"ok": False, "msg": "渠道在换 token 期间消失了"}
     hit["token"] = str(token)
     hit["refreshToken"] = str(payload.get("refreshToken") or payload.get("refresh_token") or "")
     hit["tokenAt"] = time.strftime("%Y-%m-%d %H:%M:%S")
     hit["oauthSession"] = {}
     save(accounts_dir, rows)
-    return {"ok": True, "id": cid, "tokenLen": len(token), "version": version}
+    return {"ok": True, "id": chan.get("id"), "tokenLen": len(token), "version": version}
+
+
+# ---------------------------------------------------------------- 浏览器登录（PKCE + 本地回调）
+#
+# 照插件那套：网关自己在 127.0.0.1 上起一个临时端口等回调，
+# 浏览器授权完把 code 打到这个端口，网关当场换 token、当场入库。
+# 用户在 App 里看到的就是「已打开登录页，等待授权…」，成功后自动完成。
+
+_LOGIN_STATE = {}      # {渠道 id: {"server":…, "thread":…, "result":…, "state":…, "port":…}}
+LOGIN_TIMEOUT = 600    # 10 分钟，跟插件一致
+
+
+def _pkce_pair():
+    import base64, hashlib, secrets as _sec
+    verifier = base64.urlsafe_b64encode(_sec.token_bytes(48)).rstrip(b"=").decode()
+    challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    return verifier, challenge
+
+
+def _codearts_authorize(port, challenge):
+    from urllib.parse import urlencode
+    q = urlencode({
+        "theme": "2",
+        "locale": "zh-cn",
+        "uri_scheme": "codearts-agent",
+        "client_id": "codearts-agent",
+        "port": str(port),
+        "code_challenge": challenge,
+        "code_challenge_method": "S-256".replace("S-", "SHA-"),   # SHA-256
+        "ticket_id": _uuid4().replace("-", "") + _uuid4().replace("-", ""),
+        "plugin-name": "snap_AIIDE",
+        "plugin-version": "5.2.0",
+    })
+    return "https://codearts.huaweicloud.com/portal/authorize?" + q
+
+
+def begin_login(accounts_dir, cid):
+    """给支持浏览器授权的渠道起一次登录：本地监听 + 返回授权地址。"""
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from urllib.parse import urlparse, parse_qs
+
+    rows = load(accounts_dir)
+    hit = _chan_by_id(rows, cid)
+    if hit is None:
+        return {"ok": False, "msg": "没有这个渠道: %s" % cid}
+
+    kind = str(hit.get("checkinKind") or "")
+    if kind not in ("codearts", "lobsterai"):
+        return {"ok": False, "msg": "这个渠道还不支持浏览器授权登录"}
+
+    # 已经在等就直接复用，别起第二个端口
+    old = _LOGIN_STATE.get(cid)
+    if old and old.get("url") and old.get("result") is None:
+        return {"ok": True, "id": cid, "url": old["url"], "port": old["port"], "reused": True}
+
+    verifier, challenge = _pkce_pair()
+    state = _uuid4()
+
+    box = {"result": None, "state": state, "port": 0, "url": ""}
+
+    class Callback(BaseHTTPRequestHandler):
+        def do_GET(self):
+            u = urlparse(self.path)
+            if u.path not in ("/oauth/callback", "/auth/callback"):
+                self.send_response(404)
+                self.end_headers()
+                return
+            qs = parse_qs(u.query or "")
+            code = (qs.get("code") or [""])[0]
+            got_state = (qs.get("state") or [""])[0]
+            ok = False
+            msg = ""
+            if got_state and got_state != box["state"]:
+                msg = "state 不一致"
+            elif not code:
+                msg = "回调里没有 code"
+            else:
+                try:
+                    res = _exchange_code(accounts_dir, hit, code, verifier, box["port"])
+                    ok = bool(res.get("ok"))
+                    msg = res.get("msg") or ("ok" if ok else "")
+                    if ok:
+                        box["result"] = {"ok": True, "msg": "登录成功"}
+                except Exception as exc:
+                    msg = str(exc)
+            if box["result"] is None:
+                box["result"] = {"ok": ok, "msg": msg}
+            html = ("<!doctype html><meta charset=utf-8>"
+                    "<body style='background:#0e1116;color:#e6edf3;font:16px sans-serif;"
+                    "display:flex;height:100vh;align-items:center;justify-content:center'>"
+                    + ("<div>登录成功，可以关闭本页了。</div>" if ok
+                       else "<div>登录没完成：" + msg + "</div>")
+                    + "</body>")
+            body = html.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = None
+    port = 0
+    for cand in range(39509, 39529):
+        try:
+            srv = ThreadingHTTPServer(("127.0.0.1", cand), Callback)
+            port = cand
+            break
+        except Exception:
+            continue
+    if srv is None:
+        return {"ok": False, "msg": "本地回调端口都被占用了（39509-39528）"}
+
+    box["port"] = port
+    if kind == "codearts":
+        box["url"] = _codearts_authorize(port, challenge)
+    else:
+        # LobsterAI：redirect_uri 必须和本地监听端口一致，否则回调打不回来
+        from urllib.parse import urlencode
+        state_uuid = _uuid4()
+        rows2 = load(accounts_dir)
+        hit2 = _chan_by_id(rows2, cid)
+        if hit2 is not None:
+            hit2["oauthSession"] = {
+                "state": state_uuid,
+                "uuid": _uuid4(),
+                "firstKeyfrom": str(_now_ms()),
+                "at": _now_ms(),
+            }
+            save(accounts_dir, rows2)
+        box["state"] = state_uuid
+        portal = str(hit.get("portalBase") or "https://lobsterai.youdao.com")
+        box["url"] = "%s/portal#/login?%s" % (portal, urlencode({
+            "source": "electron",
+            "redirect_uri": "http://127.0.0.1:%d/auth/callback" % port,
+            "state": state_uuid,
+        }))
+
+    threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.5},
+                     daemon=True).start()
+    # 关键：存的就是 box 本身。之前用 {**box} 复制了一份，
+    # 回调线程写的是原 box，查询时读的是副本，result 永远是 None
+    # —— 表现就是「已经登录成功了，界面还一直显示等待」。
+    box["server"] = srv
+    box["deadline"] = time.time() + LOGIN_TIMEOUT
+    _LOGIN_STATE[cid] = box
+    return {"ok": True, "id": cid, "url": box["url"], "port": port}
+
+
+def login_state(accounts_dir, cid):
+    """查询这次登录好了没。好了一次就把端口关掉。"""
+    st = _LOGIN_STATE.get(cid)
+    if not st:
+        return {"ok": False, "pending": False, "msg": "没有进行中的登录"}
+    res = st.get("result")
+    if res is None:
+        if time.time() > st.get("deadline", 0):
+            _close_login(cid)
+            return {"ok": False, "pending": False, "msg": "等待授权超时（10 分钟）"}
+        return {"ok": True, "pending": True}
+    _close_login(cid)
+    return {"ok": bool(res.get("ok")), "pending": False, "msg": res.get("msg") or ""}
+
+
+def _close_login(cid):
+    st = _LOGIN_STATE.pop(cid, None)
+    if not st:
+        return
+    try:
+        st["server"].shutdown()
+    except Exception:
+        pass
+
+
+def _exchange_code(accounts_dir, chan, code, verifier, port):
+    """浏览器回调里换 token。"""
+    kind = str(chan.get("checkinKind") or "")
+    if kind == "lobsterai":
+        return exchange_code(accounts_dir, chan, code, "")
+    return {"ok": False, "msg": "%s 的换 token 还没实现（CodeArts 要 DPoP 签名）" % kind}
 
 
 # ---------------------------------------------------------------- 签到（按类型）
