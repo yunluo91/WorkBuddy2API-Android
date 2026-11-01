@@ -141,6 +141,10 @@ def save(accounts_dir, rows):
             "cookieAt": str(r.get("cookieAt") or ""),
             "website": str(r.get("website") or ""),
             "checkinKind": str(r.get("checkinKind") or ""),
+            "token": str(r.get("token") or ""),
+            "refreshToken": str(r.get("refreshToken") or ""),
+            "tokenAt": str(r.get("tokenAt") or ""),
+            "oauthSession": r.get("oauthSession") if isinstance(r.get("oauthSession"), dict) else {},
             "checkin": r.get("checkin") if isinstance(r.get("checkin"), dict) else {},
             "website": str(r.get("website") or ""),
         })
@@ -181,7 +185,9 @@ def _fetch_models(chan, timeout=15):
     url = chan["baseUrl"].rstrip("/") + "/models"
     req = urllib.request.Request(url, method="GET")
     req.add_header("Accept", "application/json")
-    if chan.get("key"):
+    if chan.get("token"):
+        req.add_header("Authorization", "Bearer " + chan["token"])
+    elif chan.get("key"):
         req.add_header("Authorization", "Bearer " + chan["key"])
     # 账号型渠道：凭据是从 App 内网页登录抓下来的整条 Cookie
     if chan.get("cookie"):
@@ -304,7 +310,9 @@ def request(chan, path, method="GET", body=None, timeout=30, extra_headers=None)
     req.add_header("Accept", "application/json")
     if data is not None:
         req.add_header("Content-Type", "application/json")
-    if chan.get("key"):
+    if chan.get("token"):
+        req.add_header("Authorization", "Bearer " + chan["token"])
+    elif chan.get("key"):
         req.add_header("Authorization", "Bearer " + chan["key"])
     if chan.get("cookie"):
         req.add_header("Cookie", chan["cookie"])
@@ -324,6 +332,159 @@ def request(chan, path, method="GET", body=None, timeout=30, extra_headers=None)
         return json.loads(raw)
     except Exception:
         return {"raw": raw[:2000]}
+
+
+# ---------------------------------------------------------------- 账号登录（OAuth）
+
+# 回调地址的固定端口：WebView 里由 App 拦截，不需要真的有人监听，
+# 但 redirect_uri 必须和授权时提交的完全一致，所以写死。
+OAUTH_CALLBACK_PORT = 18988
+OAUTH_CALLBACK_PATH = "/auth/callback"
+
+
+def _now_ms():
+    return int(time.time() * 1000)
+
+
+def _uuid4():
+    import uuid
+    return str(uuid.uuid4())
+
+
+def _lobsterai_version():
+    """取客户端版本号（日期式，如 2026.10.24）。
+
+    exchange 的 body 里必填，写错会被拒。先试官方更新接口，
+    拿不到就用一个近似的日期串兜底 —— 兜底值可能过期，
+    所以调用方出错时要把这条一起报出来方便定位。
+    """
+    try:
+        req = urllib.request.Request(
+            "https://api-overmind.youdao.com/openapi/get/luna/hardware/lobsterai/prod/update",
+            headers={"User-Agent": "lobsterai"})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            data = json.loads(r.read().decode("utf-8", "replace"))
+        def pick(o):
+            if isinstance(o, dict):
+                for k in ("version", "latestVersion", "appVersion"):
+                    v = o.get(k)
+                    if isinstance(v, str) and v:
+                        return v
+                for v in o.values():
+                    got = pick(v)
+                    if got:
+                        return got
+            elif isinstance(o, list):
+                for v in o:
+                    got = pick(v)
+                    if got:
+                        return got
+            return ""
+        v = pick(data)
+        if v:
+            return v
+    except Exception:
+        pass
+    return time.strftime("%Y.%m.%d")
+
+
+def login_url(accounts_dir, cid):
+    """给 OAuth 型渠道生成登录地址，同时把会话参数存回渠道行。
+
+    state / uuid / firstKeyfrom 必须在回调时原样带回，所以先落盘。
+    """
+    rows = load(accounts_dir)
+    hit = _chan_by_id(rows, cid)
+    if hit is None:
+        return {"ok": False, "msg": "没有这个渠道: %s" % cid}
+    kind = str(hit.get("checkinKind") or hit.get("authKind") or "")
+    if kind != "lobsterai":
+        return {"ok": False, "msg": "这个渠道还不支持 App 内登录，可以直接填 Key"}
+
+    state = _uuid4()
+    session = {
+        "state": state,
+        "uuid": _uuid4(),
+        "firstKeyfrom": str(_now_ms()),
+        "at": _now_ms(),
+    }
+    hit["oauthSession"] = session
+    save(accounts_dir, rows)
+
+    from urllib.parse import urlencode
+    portal = str(hit.get("portalBase") or "https://lobsterai.youdao.com")
+    q = urlencode({
+        "source": "electron",
+        "redirect_uri": "http://127.0.0.1:%d%s" % (OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_PATH),
+        "state": state,
+    })
+    return {"ok": True, "id": cid, "url": "%s/portal#/login?%s" % (portal, q),
+            "callbackPort": OAUTH_CALLBACK_PORT, "state": state}
+
+
+def login_callback(accounts_dir, cid, code, state=""):
+    """回调拿到 code → 换 token → 存进渠道。
+
+    换到的 accessToken 之后所有请求都用 Authorization: Bearer，
+    refreshToken 留着续期（续期逻辑下一轮再做）。
+    """
+    rows = load(accounts_dir)
+    hit = _chan_by_id(rows, cid)
+    if hit is None:
+        return {"ok": False, "msg": "没有这个渠道: %s" % cid}
+    if not code:
+        return {"ok": False, "msg": "回调里没有 code"}
+
+    kind = str(hit.get("checkinKind") or hit.get("authKind") or "")
+    if kind != "lobsterai":
+        return {"ok": False, "msg": "这个渠道还不支持换取凭据"}
+
+    session = hit.get("oauthSession") or {}
+    if state and session.get("state") and state != session.get("state"):
+        return {"ok": False, "msg": "state 对不上（可能不是这次登录的回调）"}
+
+    version = _lobsterai_version()
+    body = {
+        "authCode": code,
+        "firstKeyfrom": str(session.get("firstKeyfrom") or _now_ms()),
+        "latestKeyfrom": str(_now_ms()),
+        "uuid": str(session.get("uuid") or _uuid4()),
+        "version": version,
+    }
+    url = hit["baseUrl"].rstrip("/") + "/api/auth/exchange"
+    data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Accept", "application/json")
+    req.add_header("User-Agent", "lobsterai")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            raw = r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        return {"ok": False, "msg": "exchange HTTP %s: %s"
+                % (exc.code, exc.read()[:200].decode("utf-8", "replace"))}
+    except Exception as exc:
+        return {"ok": False, "msg": "exchange 失败：%r" % (exc,)}
+
+    try:
+        doc = json.loads(raw)
+    except Exception:
+        return {"ok": False, "msg": "exchange 返回不是 JSON：%s" % raw[:200]}
+
+    payload = doc.get("data") if isinstance(doc, dict) else None
+    if not isinstance(payload, dict):
+        payload = doc if isinstance(doc, dict) else {}
+    token = (payload.get("accessToken") or payload.get("access_token")
+             or (doc.get("data") or {}).get("accessToken") or "")
+    if not token:
+        return {"ok": False, "msg": "没拿到 accessToken（version=%s）：%s" % (version, raw[:200])}
+
+    hit["token"] = str(token)
+    hit["refreshToken"] = str(payload.get("refreshToken") or payload.get("refresh_token") or "")
+    hit["tokenAt"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    hit["oauthSession"] = {}
+    save(accounts_dir, rows)
+    return {"ok": True, "id": cid, "tokenLen": len(token), "version": version}
 
 
 # ---------------------------------------------------------------- 签到（按类型）
@@ -402,7 +563,9 @@ def checkin(accounts_dir, cid):
     # 有专门实现的先走专门实现
     kind = str(hit.get("checkinKind") or "").strip()
     if kind in CHECKIN_KINDS:
-        if not hit.get("cookie"):
+        # OAuth 型渠道登录后拿到的是 token，Cookie 型拿到的是 cookie，
+        # 两者有一个就算登录过了。
+        if not (hit.get("cookie") or hit.get("token")):
             return {"ok": False, "msg": "还没登录 —— 先点「登录」把账号登进去"}
         try:
             return CHECKIN_KINDS[kind](hit)
@@ -434,6 +597,8 @@ def describe(rows):
         "enabled": bool(c.get("enabled")),
         "hasKey": bool(c.get("key")),
         "hasCookie": bool(c.get("cookie")),
+        "hasToken": bool(c.get("token")),
+        "tokenAt": c.get("tokenAt") or "",
         "cookieAt": c.get("cookieAt") or "",
         "hasCheckin": bool((c.get("checkin") or {}).get("path")),
         "website": str(c.get("website") or ""),
@@ -458,7 +623,9 @@ def forward(chan, model, payload, timeout=600):
     req = urllib.request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("Accept", "text/event-stream" if body.get("stream") else "application/json")
-    if chan.get("key"):
+    if chan.get("token"):
+        req.add_header("Authorization", "Bearer " + chan["token"])
+    elif chan.get("key"):
         req.add_header("Authorization", "Bearer " + chan["key"])
     # 账号型渠道：凭据是从 App 内网页登录抓下来的整条 Cookie
     if chan.get("cookie"):

@@ -1867,7 +1867,22 @@ async function addChannel(){
 }
 
 /* WB-CHANNEL-LOGIN 打开 App 里的登录窗口（走 JS 桥） */
-function openChannelLogin(id, site){
+async function openChannelLogin(id, site){
+  /* 先问网关要 OAuth 登录地址；不支持就退回「直接开站点首页」。 */
+  try{
+    var d = await fetch('/api/channels/login-url', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: id})
+    }).then(function(r){ return r.json(); });
+    if(d && d.ok && d.url){
+      window.WbBridge.openLogin(id, d.url);
+      return;
+    }
+  }catch(e){}
+  openChannelLoginPlain(id, site);
+}
+
+function openChannelLoginPlain(id, site){
   try{
     if(!window.WbBridge || !window.WbBridge.openLogin){
       toast('这个版本不支持网页登录，请升级 App', 'bad');
@@ -3164,6 +3179,31 @@ class Handler(BaseHTTPRequestHandler):
                             s["context"] = 0
             save_chat(data)
             _json_send(self, 200, {"ok": True})
+            return
+        if path == "/api/channels/login-url":
+            if not self._token_ok():
+                self._deny()
+                return
+            try:
+                body2 = body if isinstance(body, dict) else {}
+                _json_send(self, 200, wb_channels.login_url(
+                    _accounts_dir(), str(body2.get("id") or "").strip()))
+            except Exception as exc:
+                _json_send(self, 200, {"ok": False, "msg": str(exc)})
+            return
+        if path == "/api/channels/login-callback":
+            if not self._token_ok():
+                self._deny()
+                return
+            try:
+                body2 = body if isinstance(body, dict) else {}
+                _json_send(self, 200, wb_channels.login_callback(
+                    _accounts_dir(),
+                    str(body2.get("id") or "").strip(),
+                    str(body2.get("code") or "").strip(),
+                    str(body2.get("state") or "").strip()))
+            except Exception as exc:
+                _json_send(self, 200, {"ok": False, "msg": str(exc)})
             return
         if path == "/api/channels/cookie":
             if not self._token_ok():

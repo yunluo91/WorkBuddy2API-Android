@@ -851,6 +851,23 @@ class MainActivity : ComponentActivity() {
                                     loading = false
                                     if (url != null) addr = url
                                 }
+
+                                /* WB-OAUTH-CALLBACK 拦 OAuth 回调。
+                                   LobsterAI 这套的 redirect_uri 是
+                                   http://127.0.0.1:18988/auth/callback
+                                   —— 故意不让它真的去请求，在这里截住 code。 */
+                                override fun shouldOverrideUrlLoading(
+                                    v: WebView?,
+                                    req: android.webkit.WebResourceRequest?
+                                ): Boolean {
+                                    val u = req?.url?.toString() ?: return false
+                                    return handleOAuthCallback(u)
+                                }
+
+                                @Deprecated("Deprecated in Java")
+                                override fun shouldOverrideUrlLoading(v: WebView?, u: String?): Boolean {
+                                    return u != null && handleOAuthCallback(u)
+                                }
                             }
                             if (channelLoginUrl.isNotEmpty()) loadUrl(channelLoginUrl)
                             web = this
@@ -866,6 +883,71 @@ class MainActivity : ComponentActivity() {
                             .align(Alignment.TopCenter)
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * WB-OAUTH-CALLBACK 从回调地址里取 code / state。
+     *
+     * 命中就交给网关去换 token，返回 true 表示这次导航被我们吃掉了。
+     */
+    private fun handleOAuthCallback(url: String): Boolean {
+        if (!url.contains("/auth/callback")) return false
+        val uri = runCatching { android.net.Uri.parse(url) }.getOrNull() ?: return false
+        val code = uri.getQueryParameter("code").orEmpty()
+        val state = uri.getQueryParameter("state").orEmpty()
+        if (code.isEmpty()) return false
+        channelLoginMsg = "正在换取凭据…"
+        saveChannelToken(channelLoginId, code, state)
+        return true
+    }
+
+    /** 把 code 交给控制台换 accessToken。 */
+    private fun saveChannelToken(channelId: String, code: String, state: String) {
+        io.execute {
+            var conn: java.net.HttpURLConnection? = null
+            try {
+                val url = java.net.URL(consoleUrl() + "api/channels/login-callback")
+                conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 10000
+                    readTimeout = 45000
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("X-WB-Token", WbApi.token)
+                }
+                val body = org.json.JSONObject()
+                    .put("id", channelId)
+                    .put("code", code)
+                    .put("state", state)
+                    .toString()
+                conn.outputStream.use { it.write(body.toByteArray()) }
+                val text = (if (conn.responseCode in 200..299) conn.inputStream
+                            else conn.errorStream)
+                    ?.bufferedReader()?.use { it.readText() }.orEmpty()
+                val doc = runCatching { org.json.JSONObject(text) }.getOrNull()
+                val ok = doc?.optBoolean("ok", false) == true
+                runOnUiThread {
+                    if (ok) {
+                        channelLoginMsg = "登录成功，凭据已保存"
+                        channelLoginId = ""
+                        channelLoginUrl = ""
+                        toast("渠道 $channelId 登录成功")
+                        toolWebReload()
+                        try {
+                            web?.evaluateJavascript("pick('channels')", null)
+                        } catch (_: Throwable) {
+                        }
+                    } else {
+                        channelLoginMsg = "换取凭据失败：" +
+                                (doc?.optString("msg") ?: text.take(120))
+                    }
+                }
+            } catch (t: Throwable) {
+                runOnUiThread { channelLoginMsg = "换取凭据失败：${t.message}" }
+            } finally {
+                runCatching { conn?.disconnect() }
             }
         }
     }
