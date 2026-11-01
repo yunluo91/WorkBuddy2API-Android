@@ -8,6 +8,10 @@
   <sub>陨落[洛杉矶高级二改王] · <a href="https://github.com/yunluoliu50-cell">@yunluoliu50-cell</a></sub>
 </p>
 
+<p align="center">
+  <sub>基于 <a href="https://github.com/ardeyouxipianyi/workbuddy2api-hub">ardeyouxipianyi/workbuddy2api-hub</a>　·　MIT</sub>
+</p>
+
 ---
 
 把 Python 写的 OpenAI 兼容网关塞进一个 Android APK 里跑。
