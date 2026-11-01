@@ -1,4 +1,14 @@
-# WorkBuddy2API · 手机版
+<p align="center">
+  <img src="https://avatars.githubusercontent.com/u/226801564?v=4" width="108" height="108" alt="avatar">
+</p>
+
+<h1 align="center">WorkBuddy2API · 手机版</h1>
+
+<p align="center">
+  <sub>陨落[洛杉矶高级二改王] · <a href="https://github.com/yunluoliu50-cell">@yunluoliu50-cell</a></sub>
+</p>
+
+---
 
 把 Python 写的 OpenAI 兼容网关塞进一个 Android APK 里跑。
 
