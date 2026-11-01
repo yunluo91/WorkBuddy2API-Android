@@ -592,11 +592,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // WB-BROWSER-LOGIN 浏览器授权等待页（盖在最上层）
-            if (loginWaitId.isNotEmpty()) {
-                ChannelLoginWaiting()
-            }
-
             // WB-CHANNEL-LOGIN 渠道登录窗口（盖在最上层）
             if (channelLoginId.isNotEmpty()) {
                 ChannelLoginOverlay()
@@ -3806,20 +3801,15 @@ class MainActivity : ComponentActivity() {
          * WB-BROWSER-LOGIN 渠道页点了「登录」→ 网关已经起好本地回调端口，
          * 这里只负责把等待页拉起来并把授权地址丢给浏览器。
          */
+        /**
+         * WB-LINK-ONLY 保留的方法，什么都不做。
+         *
+         * 现在「登录」等于「给一条授权链接」：链接由网页自己显示 +
+         * 复制到剪贴板，App 不弹窗口、不跳浏览器。
+         * 留着这个方法和 startLoginLink 是为了旧页面调用时不抛异常。
+         */
         @android.webkit.JavascriptInterface
         fun beginLogin(id: String?, name: String?, url: String?) {
-            val cid = (id ?: "").trim()
-            if (cid.isEmpty()) return
-            val u = (url ?: "").trim()
-            if (u.isEmpty()) return
-            runOnUiThread {
-                loginWaitId = cid
-                loginWaitName = (name ?: cid).trim().ifEmpty { cid }
-                loginWaitUrl = u
-                // WB-LINK-ONLY 用户要的是「把链接给我」，不是自动弹浏览器。
-                // 链接放页面上，长按可复制，也可以点「用浏览器打开」。
-                loginWaitMsg = "复制下面的链接，在浏览器里打开完成登录（最长等待 10 分钟）"
-            }
         }
 
         @android.webkit.JavascriptInterface

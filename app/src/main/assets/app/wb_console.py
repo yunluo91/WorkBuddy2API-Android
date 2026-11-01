@@ -1499,6 +1499,12 @@ color:var(--fg);font-size:13.5px;outline:none;font-family:inherit}
   padding:8px 10px;color:var(--fg);font:inherit;font-size:12.5px;min-width:0}
 .chaddrow{display:flex;gap:6px}
 .chaddrow input{flex:1}
+
+/* WB-LINK-ONLY 授权链接展示 */
+.chlwrap{display:flex;gap:6px;align-items:flex-start;margin-top:7px}
+.chlink{flex:1;min-width:0;background:#0b0f14;border:1px solid var(--line);
+  border-radius:8px;padding:7px 9px;font-size:10.5px;line-height:1.45;
+  color:var(--accent);word-break:break-all;font-family:ui-monospace,Menlo,Consolas,monospace}
 </style></head><body>
 
 <div class="top">
@@ -1825,6 +1831,7 @@ function renderChannels(){
         '<label class="chsw"><input type="checkbox"' + (r.enabled ? ' checked' : '') +
           ' onchange="toggleChannel(\'' + esc(r.id) + '\', this.checked)"><i></i></label>' +
       '</div>' +
+      '<div class="chlogin" id="chl-' + esc(r.id) + '" style="display:none"></div>' +
       '<div class="chmeta">' + esc(r.baseUrl || '') +
         (r.models ? '　·　' + r.models + ' 个模型' : '') +
         (r.hasKey ? '' : '　·　没填 key') + '</div>' +
@@ -1899,12 +1906,9 @@ async function openChannelLogin(id, site){
       body: JSON.stringify({id: id})
     }).then(function(r){ return r.json(); });
     if(d && d.ok && d.url){
-      var row = (CH.rows || []).filter(function(x){ return x.id === id; })[0] || {};
-      if(window.WbBridge && window.WbBridge.beginLogin){
-        window.WbBridge.beginLogin(id, row.name || id, d.url);
-      }else{
-        window.WbBridge.openLogin(id, d.url);
-      }
+      /* WB-LINK-ONLY 只给链接：不弹任何页面、不跳浏览器。
+         链接直接显示在那一行下面，同时写进剪贴板。 */
+      showLoginLink(id, d.url);
       return;
     }
     if(d && d.msg) toast(d.msg, 'bad');
@@ -1945,6 +1949,31 @@ async function channelCheckin(id){
   }catch(e){
     toast('签到失败：' + e.message, 'bad');
   }
+}
+
+/* 把授权链接贴到这一行下面，并复制到剪贴板 */
+function showLoginLink(id, url){
+  var box = document.getElementById('chl-' + id);
+  if(box){
+    box.innerHTML =
+      '<div class="chlwrap">' +
+        '<div class="chlink">' + esc(url) + '</div>' +
+        '<button class="btn ghost mini" onclick="copyLoginLink(\'' + esc(id) + '\')">复制链接</button>' +
+      '</div>';
+    box.style.display = 'block';
+    window.__loginLinks = window.__loginLinks || {};
+    window.__loginLinks[id] = url;
+  }
+  copyLoginLink(id);
+  toast('授权链接已复制，去浏览器打开', 'ok');
+}
+
+function copyLoginLink(id){
+  var url = (window.__loginLinks || {})[id];
+  if(!url) return;
+  try{
+    copyText(url).then(function(){}, function(){});
+  }catch(e){}
 }
 
 async function toggleChannel(id, on){
