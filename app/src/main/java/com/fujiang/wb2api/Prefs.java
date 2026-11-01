@@ -16,8 +16,8 @@ public final class Prefs {
     }
 
     public int port() {
-        int p = sp.getInt("port", 8788);
-        if (p < 1024 || p > 65535) p = 8788;
+        int p = sp.getInt("port", 8888);
+        if (p < 1024 || p > 65535) p = 8888;
         return p;
     }
 

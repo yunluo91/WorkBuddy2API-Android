@@ -655,6 +655,34 @@ def key_toggle(kid, enabled):
 
 # ---------------------------------------------------------------- 对话
 
+def _think_call(path, payload=None):
+    """请求思考调试台（wb_boot.py，网关+1 那个端口）。
+
+    WB-THINK-MERGE
+    控制台的「思考」页现在自己渲染界面，不再用 iframe。
+    但档位状态存在 wb_boot 那边（thinking.json + 它的 /api/state），
+    所以这里做一层回环 HTTP 代理 —— 两个进程同机不同端口，
+    走 HTTP 比互相 import 干净（wb_boot 反过来 import 了 wb_console，
+    直接 import 会成环）。
+    """
+    import urllib.request
+    url = think_url().rstrip('/') + path
+    try:
+        if payload is None:
+            req = urllib.request.Request(url)
+        else:
+            data = json.dumps(payload).encode('utf-8')
+            req = urllib.request.Request(
+                url, data=data,
+                headers={'Content-Type': 'application/json'},
+            )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            return json.loads(resp.read().decode('utf-8', 'replace'))
+    except Exception as exc:
+        _log("think 代理失败 %s: %r" % (path, exc))
+        return None
+
+
 def think_url():
     """思考调试台（wb_boot.py）的地址。
 
@@ -1375,6 +1403,61 @@ color:var(--fg);font-size:13.5px;outline:none;font-family:inherit}
 .ksheetbtns .btn{flex:1;padding:11px 0;border-radius:10px;font-size:14px;font-weight:600}
 
 /* WB-DROP-MODEL-TAB 模型清单的样式随页面一起删了（改用 App 原生页） */
+
+/* WB-EMBED 第二版
+   网页自己那排页签**永久隐藏**。
+   
+   原来写成 body.embed .top .tab（靠 ?embed=1 触发），实测没生效 ——
+   屏幕上出现了两排页签：App 那排「模型/密钥/思考」+ 网页那排「密钥/思考」。
+   
+   现在 App 里已经有完整的一排页签，网页只当内容容器用，
+   所以直接无条件藏掉，不再依赖任何参数。
+
+   切页签靠 URL 的 ?tab=keys / ?tab=think，pick() 照样工作。 */
+.top .tab{display:none !important}
+
+/* WB-THINK-MERGE 思考页样式（跟控制台其它页同一套变量） */
+.thinkwrap{flex:1;overflow-y:auto;padding:10px 12px calc(16px + env(safe-area-inset-bottom))}
+.tcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:12px 13px;margin-bottom:10px}
+.tcard.tight{padding:4px 10px 8px}
+.trow{display:flex;align-items:center;gap:10px;padding:7px 0}
+.tmain{flex:1;min-width:0}
+.tlab{font-size:13.5px;font-weight:600;color:var(--fg)}
+.tsub{font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:1px}
+.tsw{position:relative;width:42px;height:24px;flex:0 0 auto}
+.tsw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.tsw i{position:absolute;inset:0;border-radius:999px;background:var(--panel2);
+  border:1px solid var(--line);transition:.18s}
+.tsw i::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;
+  border-radius:50%;background:var(--dim);transition:.18s}
+.tsw input:checked+i{background:rgba(13,189,139,.22);border-color:rgba(13,189,139,.5)}
+.tsw input:checked+i::after{left:20px;background:var(--accent)}
+.tseg{display:flex;gap:5px;margin:7px 0 3px}
+.topt{flex:1;padding:9px 4px;text-align:center;cursor:pointer;user-select:none;
+  border:1px solid var(--line);border-radius:9px;transition:.15s}
+.topt b{font-size:12.5px;font-weight:600;color:var(--dim)}
+.topt.on{background:var(--panel2);border-color:rgba(13,189,139,.5)}
+.topt.on b{color:var(--accent)}
+.topt:active{border-color:var(--accent)}
+.tacts{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.tsec{display:flex;align-items:baseline;gap:8px;padding:6px 2px 8px}
+.tsec span:first-child{font-size:13.5px;font-weight:600;color:var(--fg)}
+.tdet{margin-top:2px}
+.tdet summary{cursor:pointer;font-size:11.5px;color:var(--dim);padding:6px 2px;list-style:none}
+.tdet summary::-webkit-details-marker{display:none}
+.tdet summary::before{content:"▸ ";font-size:10px}
+.tdet[open] summary::before{content:"▾ "}
+.tdet p{font-size:11.5px;color:var(--dim);line-height:1.65;margin:2px 0 6px}
+.tdet b{color:var(--fg)}
+.badge2{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;
+  border:1px solid var(--line);color:var(--dim)}
+.badge2.ok{color:var(--accent);border-color:rgba(13,189,139,.45);background:rgba(13,189,139,.12)}
+.badge2.warn{color:var(--warn);border-color:rgba(240,136,62,.45);background:rgba(240,136,62,.12)}
+#paneThink th{color:var(--dim);font-weight:500;font-size:11.5px}
+#paneThink td,#paneThink th{padding:6px 5px;border-bottom:1px solid var(--line);
+  white-space:nowrap;text-align:left;font-size:12px}
+#paneThink tr:last-child td{border-bottom:0}
 </style></head><body>
 
 <div class="top">
@@ -1482,15 +1565,111 @@ color:var(--fg);font-size:13.5px;outline:none;font-family:inherit}
      pane 没了就永远不会触发，留着不影响别的地方。 -->
 
 <!-- WB-THINK-TAB 思考调试台（iframe 嵌入 8789） -->
+<!-- WB-THINK-MERGE 思考页（控制台自己渲染，不再嵌 iframe）
+
+     原来这里是个 iframe，套 8789 那个思考调试台整页。
+     问题：跨端口 → 那个页面读不到 App 的 JS 桥，
+     所以设置页里那张「思考档位」卡只能留在设置里，两处各一套。
+
+     现在改成控制台直接用 HTML 画：
+       · 档位状态走控制台的 /api/think-state 代理（后端转给 8789）
+       · 保存走 /api/think-save 代理
+       · 「对话默认档位」是 App 自己的设置，走 window.WbBridge
+     这样"网关侧档位 + App 侧档位"终于在同一页里了。 -->
 <div class="pane" id="paneThink">
-  <iframe id="thinkFrame" src="about:blank"
-    style="flex:1;width:100%;border:0;background:var(--bg);min-height:0"></iframe>
+  <div class="thinkwrap">
+
+    <div class="tcard">
+      <div class="trow">
+        <div class="tmain">
+          <div class="tlab">启用档位调节</div>
+          <div class="tsub">关掉就按上游默认走，不再干预</div>
+        </div>
+        <label class="tsw"><input type="checkbox" id="tEnabled"><i></i></label>
+      </div>
+      <div id="tOffNote" class="tsub" style="display:none;padding:2px 0 4px">
+        未启用时客户端不传 effort 会被补成最高档。打开才真正可控。
+      </div>
+
+      <div id="tTune">
+        <div class="tlab" style="padding-top:6px">网关默认档位</div>
+        <div class="tseg" id="tModes"></div>
+        <div class="tsub" id="tModeHint">—</div>
+
+        <div class="trow">
+          <div class="tmain">
+            <div class="tlab">强制关闭</div>
+            <div class="tsub">连客户端显式给的档位也抹掉</div>
+          </div>
+          <label class="tsw"><input type="checkbox" id="tForce"><i></i></label>
+        </div>
+      </div>
+
+      <div class="tacts">
+        <button class="btn ghost mini" onclick="thinkLoad()">刷新</button>
+        <button class="btn mini" onclick="thinkSave()">保存并生效</button>
+      </div>
+      <div id="tMsg" class="tsub" style="color:var(--accent);min-height:15px"></div>
+    </div>
+
+    <!-- 对话默认档位：App 自己的设置，走 JS 桥 -->
+    <div class="tcard">
+      <div class="tlab">对话默认档位</div>
+      <div class="tsub">新建对话用这一档；对话页那排 chip 能按会话临时改。</div>
+      <div class="tseg" id="tLevels">
+        <div class="topt" data-lv="off"  onclick="pickLevel('off')"><b>不思考</b></div>
+        <div class="topt" data-lv="low"  onclick="pickLevel('low')"><b>Low</b></div>
+        <div class="topt" data-lv="high" onclick="pickLevel('high')"><b>High</b></div>
+        <div class="topt" data-lv="max"  onclick="pickLevel('max')"><b>Max</b></div>
+      </div>
+      <div class="tsub" id="tLevelHint">—</div>
+    </div>
+
+    <div class="tsec"><span>最近请求</span><span class="tsub">网关发给上游的最终值</span></div>
+    <div class="tcard tight">
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>时间</th><th>模型</th><th>effort</th><th>thinking</th></tr></thead>
+        <tbody id="tRows"><tr><td colspan="4" class="tsub">还没有请求</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <details class="tdet">
+      <summary>档位映射 <span id="tUmap" class="badge2">读取中…</span></summary>
+      <p>客户端传的等级不在模型支持列表时，自动改写为该模型的默认档，
+         避免上游直接拒掉整个请求。默认开启。</p>
+      <p>这个开关在网关「设置」页，和上面的主开关是两回事 ——
+         它只管<b>兜底改写</b>，关掉不会让思考停下来。</p>
+    </details>
+
+  </div>
 </div>
 
 <div class="mask" id="mask" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet"></div>
 
 <script>
+/* WB-GLOBAL-CATCH 全局错误兜底
+   上面那个 #cmd 空指针就是典型例子：一行报错，后面全不执行，
+   而且失败是**静默**的 —— 用户只看到"页面不对"，看不到任何报错。
+   
+   这里挂一个全局 onerror：
+     · 打到 console，用 adb logcat | grep chromium 能看到
+     · 顺手按 URL 里的 tab 参数补一次 pick，尽量别把人卡在错状态
+   返回 false 让错误继续往外抛，不吞掉，方便排查。 */
+window.onerror = function(msg, src, line, col, err){
+  try{ console.error('[wb_console] 脚本错误', msg, 'line', line); }catch(e){}
+  try{
+    var m = location.search.match(/[?&]tab=([a-z]+)/i);
+    if(m && m[1]){
+      var want = m[1].toLowerCase();
+      if((want === 'keys' || want === 'think') && typeof pick === 'function'){
+        pick(want);
+      }
+    }
+  }catch(e){}
+  return false;
+};
+
 /* WB-FETCH-TOKEN
    控制台所有 /api/* 都要令牌。这里把 window.fetch 包一层，
    自动带上 X-WB-Token，免得每个调用点都要记得加。
@@ -1534,8 +1713,18 @@ function pick(which){
     var p=document.getElementById('pane'+names[k]);
     if(p) p.classList.toggle('on',which===k);
   });
-  if(which==='keys') loadKeys();
-  if(which==='think') loadThinkFrame();
+  if(which==='keys'){
+    loadKeys();
+    /* WB-KEYS-ROBUST 兜底：
+       万一第一次请求就是挂着（要等 5 秒才 abort），
+       1.5 秒时列表可能还写着「加载中…」。这时再发一次，
+       多半立刻出结果，用户不用自己"切一下再回来"。 */
+    setTimeout(function(){
+      var b = document.getElementById('keyList');
+      if(b && b.innerHTML && b.innerHTML.indexOf('加载中') >= 0) loadKeys(1);
+    }, 1500);
+  }
+  if(which==='think'){ thinkLoad(); loadThinkLevel(); }
 }
 function autosize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,132)+'px'; }
 
@@ -1901,13 +2090,51 @@ function renderKeys(d){
   } else db.innerHTML='';
 }
 
-function loadKeys(){
-  fetch('/api/keys',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
-    .then(function(r){return r.json();})
-    .then(renderKeys)
+/* WB-KEYS-ROBUST
+   现象：刚进控制台点「密钥」，列表一直停在 HTML 初始的「加载中…」，
+        切到别的页签再回来就好了。
+
+   原因：这个 fetch 没有超时也没有重试。只要那一次请求没返回
+        （WebView 刚建好、连接还没热、被后续导航打断…），
+        promise 就永远 pending，界面永远「加载中」。
+        再回来时重新 fetch 一次多半就成 —— 所以看起来像"要切一下"。
+
+   现在：
+     · AbortController 5 秒超时，挂住也算失败，不会无限等
+     · 失败自动重试一次（600ms 后）
+     · 两次都失败才显示「读取失败」+ 重试按钮
+   第二个参数 retry 是内部用的。 */
+function loadKeys(retry){
+  var box = document.getElementById('keyList');
+  var ctl = null, timer = null;
+  try{
+    if(typeof AbortController === 'function'){
+      ctl = new AbortController();
+      timer = setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, 5000);
+    }
+  }catch(e){}
+
+  var opt = {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'};
+  if(ctl) opt.signal = ctl.signal;
+
+  fetch('/api/keys', opt)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(timer) clearTimeout(timer);
+      if(d && d.error) throw new Error(d.error);
+      renderKeys(d);
+    })
     .catch(function(e){
-      document.getElementById('keyList').innerHTML=
-        '<div class="empty"><b>读取失败</b><p>'+esc(e.message)+'</p></div>';
+      if(timer) clearTimeout(timer);
+      if(!retry){
+        setTimeout(function(){ loadKeys(1); }, 600);
+        return;
+      }
+      if(box) box.innerHTML =
+        '<div class="empty"><b>读取失败</b><p>' +
+        esc(e && e.message ? e.message : '网络无响应') +
+        '</p><p style="margin-top:8px">' +
+        '<button class="btn ghost mini" onclick="loadKeys()">重试</button></p></div>';
     });
 }
 
@@ -2168,11 +2395,33 @@ function loadCalls(){
 fetch('/api/term/cwd').then(function(r){return r.json();}).then(function(d){
   if(d&&d.cwd){ CWD=d.cwd; paintCwd(); }
 }).catch(function(){});
-document.getElementById('cmd').addEventListener('keydown',function(e){
-  if(e.key==='ArrowUp'){ if(hi>0){hi--;this.value=hist[hi]||'';} e.preventDefault(); }
-  else if(e.key==='ArrowDown'){ if(hi<hist.length-1){hi++;this.value=hist[hi]||'';}
-    else {hi=hist.length;this.value='';} e.preventDefault(); }
-});
+/* WB-CMD-NULL-FIX
+   致命 bug 修复。
+   
+   终端页（paneTerm）在前面几版已经被删了，配套的 <input id="cmd"> 也一起没了，
+   但这段历史命令按键处理忘了删。它跑在脚本**顶层**：
+   
+       document.getElementById('cmd')  → null
+       null.addEventListener(...)      → TypeError
+   
+   JS 是单线程同步执行 —— 这一行抛错，后面所有代码全部不执行。
+   而它正好排在 WB-TAB-PARAM（读取 ?tab=think）**前面**，于是：
+     · 页面不读 URL 参数 → 不调 pick('think')
+     · 最底部的 loadModels() 也不跑
+     · 结果就是「导航高亮在思考，内容却停在默认的密钥页，
+        密钥列表还卡在初始的加载中…」
+   
+   这就是那个"偶发切错页"的真正原因 —— 其实不是偶发，
+   冷启动带参数加载必定翻车；看着正常的那几次，是因为
+   手动点了页签（走 onclick 里的 pick），或者 WebView 从缓存恢复。 */
+var cmdEl = document.getElementById('cmd');
+if (cmdEl) {
+  cmdEl.addEventListener('keydown',function(e){
+    if(e.key==='ArrowUp'){ if(hi>0){hi--;this.value=hist[hi]||'';} e.preventDefault(); }
+    else if(e.key==='ArrowDown'){ if(hi<hist.length-1){hi++;this.value=hist[hi]||'';}
+      else {hi=hist.length;this.value='';} e.preventDefault(); }
+  });
+}
 
 /* WB-DROP-CHAT-CALLS
    原来这里是 loadModels().then(loadChat) —— 打开页面先拉模型清单和对话。
@@ -2214,6 +2463,183 @@ function loadThinkFrame(){
  *   · loadModels()（上面那个）           —— 同上
  *   · fmtCtx()                          —— 对话页在用它格式化 token 数
  */
+
+/* WB-EMBED 被 App 嵌进来时藏掉网页自己的页签栏 */
+(function(){
+  try{
+    if(/[?&]embed=1/.test(location.search)) document.body.classList.add('embed');
+  }catch(e){}
+})();
+
+
+/* ==== WB-THINK-MERGE 思考页 ====
+ *
+ * 两块东西合在一页：
+ *   ① 网关侧档位（wb_boot.py 的 thinking.json）
+ *        读 /api/think-state → 控制台代理 → 8789/api/state
+ *        写 /api/think-save  → 控制台代理 → 8789/api/thinking
+ *   ② App 侧对话默认档位（SharedPreferences 的 think_level）
+ *        走 window.WbBridge（控制台页面是同源加载的，桥可用）
+ */
+var THINK = {enabled:true, mode:'catalog', force_off:false, upstream_map:null,
+             env:'', requests:[]};
+var THINK_MODES = ['off','catalog','high'];
+var THINK_DESC = {
+  off: '客户端不传 effort 就不思考（和官方端点一致）',
+  catalog: '只用模型目录里给的默认档位',
+  high: '上游老行为，一律强制最高档'
+};
+var THINK_NAME = {off:'不思考', catalog:'按模型默认', high:'最高档'};
+
+var LEVEL_DESC = {
+  off:  '发 reasoning_effort="none"，上游认这个值',
+  low:  '浅一点，省额度',
+  high: '多数情况的默认',
+  max:  '最深，思考 token 最多'
+};
+var THINK_LEVEL = 'high';
+
+function bridgeCall(fn, arg){
+  try{
+    if(!window.WbBridge) return null;
+    if(arg === undefined) return window.WbBridge[fn]();
+    return window.WbBridge[fn](arg);
+  }catch(e){ return null; }
+}
+
+function loadThinkLevel(){
+  var v = bridgeCall('getThinkLevel');
+  if(v) THINK_LEVEL = v;
+  renderThinkLevel();
+}
+
+function pickLevel(lv){
+  THINK_LEVEL = lv;
+  bridgeCall('setThinkLevel', lv);
+  renderThinkLevel();
+  toast('对话默认档位已设为 ' + (lv === 'off' ? '不思考' : lv), 'ok');
+}
+
+function renderThinkLevel(){
+  var box = document.getElementById('tLevels');
+  if(box){
+    for(var i=0;i<box.children.length;i++){
+      var el = box.children[i];
+      el.classList.toggle('on', el.getAttribute('data-lv') === THINK_LEVEL);
+    }
+  }
+  var h = document.getElementById('tLevelHint');
+  if(h) h.textContent = LEVEL_DESC[THINK_LEVEL] || '';
+}
+
+async function thinkLoad(){
+  try{
+    var d = await fetch('/api/think-state').then(function(r){ return r.json(); });
+    if(d && d.error){
+      var m = document.getElementById('tMsg');
+      if(m) m.textContent = d.error;
+      return;
+    }
+    THINK.enabled = !!d.enabled;
+    THINK.mode = d.mode || 'catalog';
+    THINK.force_off = !!d.force_off;
+    THINK.upstream_map = d.upstream_map;
+    THINK.env = d.env || '';
+    THINK.requests = d.requests || [];
+    renderThink();
+  }catch(e){
+    var m2 = document.getElementById('tMsg');
+    if(m2) m2.textContent = '读取失败：' + e.message;
+  }
+}
+
+function renderThink(){
+  var en = document.getElementById('tEnabled');
+  if(en) en.checked = THINK.enabled;
+  var note = document.getElementById('tOffNote');
+  if(note) note.style.display = THINK.enabled ? 'none' : 'block';
+  var pad = document.getElementById('tTune');
+  if(pad){ pad.style.opacity = THINK.enabled ? '1' : '.42';
+           pad.style.pointerEvents = THINK.enabled ? 'auto' : 'none'; }
+
+  var seg = document.getElementById('tModes');
+  if(seg){
+    seg.innerHTML = THINK_MODES.map(function(m){
+      return '<div class="topt' + (THINK.mode===m?' on':'') + '" data-m="' + m +
+        '" onclick="pickMode(\'' + m + '\')" title="' +
+        esc(m + ' — ' + (THINK_DESC[m]||'')) + '"><b>' +
+        esc(THINK_NAME[m]||m) + '</b></div>';
+    }).join('');
+  }
+  var hint = document.getElementById('tModeHint');
+  if(hint) hint.textContent = THINK_DESC[THINK.mode] || '';
+
+  var f = document.getElementById('tForce');
+  if(f) f.checked = THINK.force_off;
+
+  var um = document.getElementById('tUmap');
+  if(um){
+    var known = THINK.upstream_map !== null && THINK.upstream_map !== undefined;
+    um.textContent = known ? (THINK.upstream_map ? '已开启' : '已关闭') : '未知';
+    um.className = 'badge2 ' + (THINK.upstream_map ? 'ok' : 'warn');
+  }
+
+  var tb = document.getElementById('tRows');
+  if(tb){
+    if(!THINK.requests.length){
+      tb.innerHTML = '<tr><td colspan="4" class="tsub">还没有请求</td></tr>';
+    }else{
+      tb.innerHTML = THINK.requests.map(function(r){
+        return '<tr><td>' + esc(r.t) + '</td><td>' + esc(r.model||'') +
+          '</td><td>' + esc(r.effort||'—') + '</td><td>' +
+          esc(r.thinking||'—') + '</td></tr>';
+      }).join('');
+    }
+  }
+}
+
+function pickMode(m){
+  THINK.mode = m;
+  renderThink();
+}
+
+async function thinkSave(){
+  var btnMsg = document.getElementById('tMsg');
+  try{
+    var d = await fetch('/api/think-save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        enabled: THINK.enabled,
+        mode: THINK.mode,
+        force_off: THINK.force_off,
+      })
+    }).then(function(r){ return r.json(); });
+    if(d && d.error){
+      if(btnMsg) btnMsg.textContent = '保存失败：' + d.error;
+      return;
+    }
+    THINK.enabled = !!d.enabled;
+    THINK.mode = d.mode || THINK.mode;
+    THINK.force_off = !!d.force_off;
+    renderThink();
+    if(btnMsg) btnMsg.textContent = '已保存并生效';
+    setTimeout(function(){ if(btnMsg) btnMsg.textContent = ''; }, 2500);
+  }catch(e){
+    if(btnMsg) btnMsg.textContent = '保存失败：' + e.message;
+  }
+}
+
+/* 两个开关 + 首次进入时加载 */
+(function(){
+  var en = document.getElementById('tEnabled');
+  if(en) en.addEventListener('change', function(e){
+    THINK.enabled = e.target.checked; renderThink();
+  });
+  var f = document.getElementById('tForce');
+  if(f) f.addEventListener('change', function(e){
+    THINK.force_off = e.target.checked;
+  });
+})();
 
 /* WB-TAB-PARAM
    支持用 ?tab=keys / ?tab=term / ?tab=think 直接打开某个页签。
@@ -2418,6 +2844,16 @@ class Handler(BaseHTTPRequestHandler):
                 _resp2["retry_after"] = 2
             _json_send(self, 200, _resp2)
             return
+        if path == "/api/think-state":
+            if not self._token_ok():
+                self._deny()
+                return
+            data = _think_call("/api/state")
+            if data is None:
+                _json_send(self, 200, {"error": "思考调试台没响应"})
+            else:
+                _json_send(self, 200, data)
+            return
         if path == "/api/think-url":
             # WB-THINK-TAB 告诉前端思考调试台在哪
             _json_send(self, 200, {"url": think_url()})
@@ -2477,6 +2913,15 @@ class Handler(BaseHTTPRequestHandler):
                             s["context"] = 0
             save_chat(data)
             _json_send(self, 200, {"ok": True})
+            return
+        if path == "/api/think-save":
+            # WB-THINK-MERGE 转发到思考调试台的保存接口
+            body2 = body if isinstance(body, dict) else {}
+            data = _think_call("/api/thinking", body2)
+            if data is None:
+                _json_send(self, 200, {"error": "思考调试台没响应"})
+            else:
+                _json_send(self, 200, data)
             return
         if path == "/api/term":
             cmd = str(body.get("cmd") or "")

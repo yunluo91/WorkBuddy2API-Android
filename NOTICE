@@ -1,0 +1,40 @@
+# 第三方组件与来源说明
+
+本项目整体以 MIT 许可发布，见 [LICENSE](LICENSE)。
+下面这些部分来自其它项目，各自的许可与原作者权利不受本项目的 MIT 声明影响。
+
+## 上游网关
+
+`app/src/main/assets/app/` 下的 Python 部分（`wb_proxy.py`、`wb_accounts.py`、
+`wb_console.py`、`wb_boot.py`、`dashboard.html` 等）来自 WorkBuddy2API 网关，
+原项目以 MIT 许可发布。本仓库是手机端的二次封装（Android 外壳 + 原生界面 +
+若干修补），按 MIT 保留原作者版权与许可声明。
+
+## 玻璃底栏（GPL-3.0）
+
+以下文件改编自 [NPatch](https://github.com) 的 miuix 分支，
+那份是 **GPL-3.0**，不是 MIT：
+
+    app/src/main/java/com/fujiang/wb2api/ui/glass/
+        FloatingGlassBottomBar.kt
+        DampedDragAnimation.kt
+        InteractiveHighlight.kt
+        DragGestureInspector.kt
+
+按 GPL-3.0 的要求，这四个文件及其衍生版本仍然是 GPL-3.0。
+如果要把整个仓库统一成 MIT，需要先替换掉这四个文件
+（用自己实现的下栏或者改用其它 MIT/Apache 授权的组件）。
+
+## 品牌图标
+
+`app/src/main/res/drawable-xxhdpi/ic_vendor_*.png` 与网页里内联的 SVG，
+来自 [lobehub/icons](https://github.com/lobehub/lobe-icons)（MIT），
+以及仓库作者自行提供的 Space Bunny 图标。
+
+## 运行时与依赖
+
+| 组件 | 许可 |
+|---|---|
+| Chaquopy（内嵌 CPython） | MIT |
+| Jetpack Compose / AndroidX | Apache-2.0 |
+| io.github.kyant0:backdrop | Apache-2.0 |

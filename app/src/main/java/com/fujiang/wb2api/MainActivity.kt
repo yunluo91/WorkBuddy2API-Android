@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +44,13 @@ import com.fujiang.wb2api.ui.glass.FloatingGlassBottomBarItem
 import com.fujiang.wb2api.ui.glass.FloatingGlassBottomBar
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import com.fujiang.wb2api.data.AgentEntry
@@ -276,6 +283,16 @@ class MainActivity : ComponentActivity() {
     /** WB-ACCOUNT-IO 导入导出的回执。 */
     private var accountIoMsg by mutableStateOf("")
 
+    /** WB-KEEPALIVE 设置页显示用的实时状态。 */
+    private var batteryExemptState by mutableStateOf(false)
+    private var notifAllowedState by mutableStateOf(true)
+
+    /** 设置页的二级视图："" = 列表，"data" = 数据管理。 */
+    private var settingsSub by mutableStateOf("")
+
+    /** WB-DATA-MIGRATE 整包备份/恢复的回执。 */
+    private var migrateMsg by mutableStateOf("")
+
     /** WB-THINK-LEVEL 全局默认思考强度：off / low / high / max */
     private var thinkLevel by mutableStateOf("high")
 
@@ -343,6 +360,17 @@ class MainActivity : ComponentActivity() {
     private val importAccountsLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri?.let { doImportAccounts(it) }
+        }
+
+    /* WB-DATA-MIGRATE 整包备份 / 恢复 */
+    private val backupDataLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+            uri?.let { doBackupData(it) }
+        }
+
+    private val restoreDataLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let { doRestoreData(it) }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -673,19 +701,76 @@ class MainActivity : ComponentActivity() {
         // 页签变化时按需加载。
         // 控制台和调试台现在共用同一个 toolHolder，所以靠 toolLoaded
         // 判断要不要换页 —— 这正是 Java 版 setupToolWeb 里那套逻辑。
-        LaunchedEffect(tab, booting) {
+        LaunchedEffect(tab, booting, consoleSubView) {
             webTool = holder.web
             if (booting) return@LaunchedEffect
+            // 网页那两个页签（密钥/思考）靠 consoleSubView 换 URL，
+            // 所以它必须在这个 key 里，否则切了页签网页不动。
+            if (tab == WbTab.Console && consoleSubView == "models") {
+                return@LaunchedEffect      // 模型页是原生的，不碰 WebView
+            }
 
-            // WB-TAB-PARAM
-            // 从设置页跳过来时，pendingConsoleTab 里记着要打开哪个页签。
-            // 用掉之后清空 —— 否则下次进控制台还会被带到那个页签上。
-            val pending = pendingConsoleTab
-            if (tab == WbTab.Console && pending.isNotEmpty()) {
-                pendingConsoleTab = ""
-                val u = consoleUrl() + "?tab=" + pending
-                toolLoaded = u
-                holder.web.loadUrl(u)
+            if (tab == WbTab.Console) {
+                /* WB-CONSOLE-TAB-LOAD 三次修法的最终版
+                   
+                   ① 一开始靠 URL 参数 + 「地址变了才加载」的判断 —— 偶发切错。
+                   ② 改成注入 pick() —— 更不稳：页面脚本没就位时
+                      evaluateJavascript 静默失败，界面停在默认页（密钥），
+                      而且密钥那页的列表还停在初始的「加载中…」。
+                   ③ 现在：**每次都真正导航一次**。
+                   
+                   带两个参数：
+                     tab=keys|think   告诉页面落在哪一页
+                     _=<毫秒时间戳>    让 URL 每次都不一样，
+                                       WebView 一定会重新导航、重新执行脚本，
+                                       不会被"同地址"优化掉
+                   
+                   为什么不再注入：注入依赖"页面脚本已就位"这个时序，
+                   设备上实测会偶发失败，而且失败是静默的。
+                   导航虽然多花两三百毫秒，但结果是确定的 ——
+                   页面末尾那段 WB-TAB-PARAM 会在脚本执行完时调 pick()，
+                   那条路径我用 node 模拟验证过（?tab=think →
+                   tabThink 拿到 on、paneKeys 失去 on）。
+                   
+                   代价：每次切页签整页重载。控制台这页才 58KB，
+                   而且是调试用，能接受。 */
+                val base = consoleUrl()
+                val pending = pendingConsoleTab
+                val tabName = if (pending.isNotEmpty()) {
+                    pendingConsoleTab = ""
+                    pending
+                } else if (consoleSubView == "think") {
+                    "think"
+                } else {
+                    "keys"
+                }
+                /* WB-CONSOLE-TAB-HYBRID
+                   只加载一次，之后靠注入切页签。
+                   
+                   为什么不再每次都 loadUrl：
+                     每次都整页重载 → 密钥页每次都要重新发一次 /api/keys，
+                     多一次请求挂住的机会（用户看到的"点了密钥一直加载中"
+                     就是这么来的）。
+                   
+                   为什么现在敢用注入：
+                     app95 之前注入不可靠，真正的病根不是时序，是
+                     wb_console.py 里 `#cmd` 那段空指针 —— 它在脚本顶层抛
+                     TypeError，后面所有代码（包括读 URL 参数）全不执行。
+                     现在病根修掉了，注入是可靠的。
+                   
+                   首次进入仍然是带参数的导航（那条路径是确定的），
+                   之后切换只注入，不重载、不闪、不重发请求。 */
+                withFrameNanos { }
+
+                if (toolLoaded != base) {
+                    // 第一次进控制台：带参数加载，页面末尾的 WB-TAB-PARAM 会切好
+                    toolLoaded = base
+                    runCatching { holder.web.clearHistory() }
+                    holder.web.loadUrl(base + "?tab=" + tabName)
+                } else {
+                    // 已经在这个页面上了：直接注入，不动 WebView
+                    holder.web.evaluateJavascript(jsPick(tabName), null)
+                }
                 return@LaunchedEffect
             }
 
@@ -727,33 +812,110 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * WB-CONSOLE-SWITCH 控制台的切换条。
+     * WB-CONSOLE-NAV 滑动药丸式分段控件。
      *
-     * 必须在 ToolPane / ModelsContent 之外 —— 它得一直可见，
-     * 否则默认显示网页时用户看不到按钮，永远切不到原生模型页。
+     * 照 NPatch 那个「应用 / 模块」的样子做的：
+     * 一个圆角容器，选中的那一格下面垫一块会滑动的药丸，
+     * 换页签时药丸横移动画过去，而不是直接跳。
+     *
+     * NPatch 那边用的是 COUI 库的 TabRow（io.github.suqi8.coui.kmp.basic），
+     * 我们工程没引那个库，所以按外观自己实现 —— 只要效果一致，
+     * 不必为了一个控件多拉一个依赖。
      */
     @Composable
-    private fun ConsoleSubBar() {
-        Row(
+    private fun SlidingTabs(
+        items: List<Pair<String, String>>,
+        selected: String,
+        onSelect: (String) -> Unit,
+    ) {
+        val index = items.indexOfFirst { it.first == selected }.coerceAtLeast(0)
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(WbCard)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .height(42.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                .background(WbBg)
+                .border(
+                    1.dp, WbLine,
+                    androidx.compose.foundation.shape.RoundedCornerShape(999.dp)
+                )
+                .padding(3.dp)
         ) {
-            SubTab("模型", consoleSubView == "models") {
-                consoleSubView = "models"
-                if (allModels.isEmpty() && !modelsLoading) loadModelsNative()
+            val cell = maxWidth / items.size
+            val x by animateDpAsState(
+                targetValue = cell * index,
+                animationSpec = tween(durationMillis = 220),
+                label = "pill",
+            )
+            // 药丸
+            Box(
+                modifier = Modifier
+                    .offset(x = x)
+                    .width(cell)
+                    .fillMaxHeight()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                    .background(WbCard2)
+                    .border(
+                        1.dp, WbLine,
+                        androidx.compose.foundation.shape.RoundedCornerShape(999.dp)
+                    )
+            )
+            // 文字层（盖在药丸上面）
+            Row(Modifier.fillMaxSize()) {
+                items.forEach { (key, label) ->
+                    val on = key == selected
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                            .clickable { if (!on) onSelect(key) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 13.5.sp,
+                            fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (on) WbAccent else WbMuted,
+                        )
+                    }
+                }
             }
-            SubTab("网页", consoleSubView == "web") {
-                consoleSubView = "web"
-            }
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = if (consoleSubView == "models") "直连网关" else "密钥 / 思考",
-                style = MaterialTheme.typography.labelSmall,
-                color = WbMuted,
+        }
+    }
+
+    @Composable
+    private fun ConsoleSubBar() {
+        /* WB-CUTOUT 让开摄像头挖孔：
+           App 是边到边全屏，内容顶到屏幕最上面，挖孔屏会挡住。
+           按设备实际挖孔高度加顶部内边距，不写死数字。 */
+        val cutoutTop = WindowInsets.displayCutout
+            .asPaddingValues()
+            .calculateTopPadding()
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 12.dp,
+                    end = 12.dp,
+                    top = cutoutTop + 6.dp,
+                    bottom = 8.dp,
+                )
+        ) {
+            SlidingTabs(
+                items = listOf(
+                    "models" to "模型",
+                    "keys" to "密钥",
+                    "think" to "思考",
+                ),
+                selected = consoleSubView,
+                onSelect = { key ->
+                    consoleSubView = key
+                    if (key == "models" && allModels.isEmpty() && !modelsLoading) {
+                        loadModelsNative()
+                    }
+                },
             )
         }
     }
@@ -823,6 +985,19 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun SettingsPane() {
+        if (settingsSub == "data") {
+            com.fujiang.wb2api.ui.SettingsDataScreen(
+                accountIoMsg = accountIoMsg,
+                migrateMsg = migrateMsg,
+                onExportAccounts = { startExportAccounts() },
+                onImportAccounts = { startImportAccounts() },
+                onBackupData = { startBackupData() },
+                onRestoreData = { startRestoreData() },
+                onBack = { settingsSub = "" },
+            )
+            return
+        }
+
         val store = remember { com.fujiang.wb2api.agent.AgentStore(this) }
         var realmFilter by remember { mutableStateOf(store.callsRealmFilter()) }
 
@@ -847,6 +1022,9 @@ class MainActivity : ComponentActivity() {
          * 用 LaunchedEffect(Unit) 包起来，它只在进入组合时跑一次。
          */
         LaunchedEffect(Unit) {
+            batteryExemptState = isBatteryExempt()
+            notifAllowedState = androidx.core.app.NotificationManagerCompat
+                .from(this@MainActivity).areNotificationsEnabled()
             thinkLevel = prefs.thinkLevel()
             pendingPort = prefs.port()
             pendingLan = prefs.lan()
@@ -900,9 +1078,6 @@ class MainActivity : ComponentActivity() {
             prefLan = lanOn,
             prefAutoStart = autoStartOn,
             prefPanelPwd = pwdText,
-            thinkEnabled = thinkOn,
-            thinkMode = thinkMode,
-            thinkForceOff = thinkForceOff,
             onPortChange = {
                 portText = it
                 pendingPort = it.toIntOrNull() ?: prefs.port()
@@ -919,28 +1094,22 @@ class MainActivity : ComponentActivity() {
                 pwdText = it
                 pendingPwd = it
             },
-            onThinkEnabledChange = { on ->
-                thinkOn = on
-                ThinkConfig.save(this, thinkMode, thinkForceOff, on)
-            },
-            onThinkModeChange = { m ->
-                thinkMode = m
-                ThinkConfig.save(this, m, thinkForceOff, thinkOn)
-            },
-            onThinkForceOffChange = { on ->
-                thinkForceOff = on
-                ThinkConfig.save(this, thinkMode, on, thinkOn)
-            },
             onRestartGateway = { saveSettingsAndRestart() },
-            onExportAccounts = { startExportAccounts() },
-            onImportAccounts = { startImportAccounts() },
-            accountIoMsg = accountIoMsg,
-            thinkLevel = thinkLevel,
-            onSelectThinkLevel = { lv ->
-                thinkLevel = lv
-                prefs.setThinkLevel(lv)
-                chatState = chatState.copy(effort = lv)
-                if (chatState.sessionId.isNotEmpty()) patchChatMeta(effort = lv)
+            onOpenData = { settingsSub = "data" },
+            batteryExempt = batteryExemptState,
+            serviceRunning = PyRunner.isRunning(),
+            notifAllowed = notifAllowedState,
+            onRequestBattery = { requestBatteryExemption() },
+            onOpenNotifSettings = {
+                try {
+                    startActivity(Intent(
+                        android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                    ).putExtra(
+                        android.provider.Settings.EXTRA_APP_PACKAGE, packageName
+                    ))
+                } catch (_: Throwable) {
+                    toast("打不开通知设置")
+                }
             },
             lanIp = localIp(),
             lanLive = lanLive,
@@ -1857,6 +2026,79 @@ class MainActivity : ComponentActivity() {
         }, "wb-acc-import").start()
     }
 
+    // ---------------------------------------------------------------- 数据迁移
+
+    /** 备份：文件名带包名和时间，方便新旧包区分。 */
+    private fun startBackupData() {
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US)
+            .format(java.util.Date())
+        backupDataLauncher.launch("wb2api-data-$stamp.zip")
+    }
+
+    private fun startRestoreData() {
+        restoreDataLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
+    }
+
+    private fun doBackupData(uri: android.net.Uri) {
+        migrateMsg = "正在备份…"
+        Thread({
+            val r = try {
+                contentResolver.openOutputStream(uri)?.use { out ->
+                    com.fujiang.wb2api.agent.DataMigration.backup(this, out)
+                } ?: com.fujiang.wb2api.agent.DataMigration.Result(false, "打不开目标文件")
+            } catch (t: Throwable) {
+                com.fujiang.wb2api.agent.DataMigration.Result(false, "写文件失败：${t.message}")
+            }
+            runOnUiThread {
+                migrateMsg = r.message
+                toast(r.message)
+            }
+        }, "wb-data-backup").start()
+    }
+
+    /**
+     * 恢复。
+     *
+     * 恢复完必须重启进程 —— 账号池是常驻内存的，
+     * 它下一次落盘会把刚恢复的 accounts.json 冲回旧内容。
+     * 这里用 PyRunner.restart：os._exit + 闹钟把界面拉回来。
+     */
+    private fun doRestoreData(uri: android.net.Uri) {
+        migrateMsg = "正在恢复…"
+        Thread({
+            val r = try {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    // 端口按新包的默认值写死 —— 备份里带的是旧包的端口，
+                    // 原样还原会跟共存的老包抢同一个监听端口。
+                    com.fujiang.wb2api.agent.DataMigration.restore(
+                        this, input, forcePort = PyRunner.DEFAULT_PORT
+                    )
+                } ?: com.fujiang.wb2api.agent.DataMigration.Result(false, "打不开这个文件")
+            } catch (t: Throwable) {
+                com.fujiang.wb2api.agent.DataMigration.Result(false, "读文件失败：${t.message}")
+            }
+            runOnUiThread {
+                migrateMsg = if (r.ok) {
+                    r.message + "。App 马上重启，重启完数据就生效了。"
+                } else {
+                    r.message
+                }
+                toast(if (r.ok) "恢复完成，正在重启…" else r.message)
+                if (r.ok) {
+                    // 给界面一点时间把提示画出来再退出
+                    android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed({
+                            try {
+                                com.fujiang.wb2api.PyRunner.restart(this)
+                            } catch (_: Throwable) {
+                                toast("请手动重新打开 App")
+                            }
+                        }, 1200)
+                }
+            }
+        }, "wb-data-restore").start()
+    }
+
     /** 建工具执行器（只建一次）。 */
     private fun ensureTools(): com.fujiang.wb2api.agent.AgentTools? {
         agentTools?.let { return it }
@@ -2386,6 +2628,34 @@ class MainActivity : ComponentActivity() {
         currentTab = tab
     }
 
+
+    /**
+     * 注入到控制台页面里切页签的脚本。
+     *
+     * WB-CONSOLE-TAB-HYBRID
+     * app96 那一版为了绕开"注入不可靠"，改成每次切页签都整页重载。
+     * 副作用是：密钥页每次都要重新发一次 /api/keys，多一次挂住的机
+     * 会（用户看到的就是"点了密钥一直加载中"）。
+     *
+     * 现在真正的病根已经找到并修掉了：wb_console.py 里那段
+     * document.getElementById('cmd').addEventListener(...) 是空指针，
+     * 它在脚本顶层抛错，导致后面所有代码（包括读 URL 参数那段）都不执行。
+     * 病因既然没了，注入就可以用了。
+     *
+     * 这里仍然保留重试：App 调用 evaluateJavascript 的时刻，
+     * 页面脚本可能还没执行到 function pick(...) 那一步。
+     * 先试一次，不行就每 80ms 再试，最多 50 次（约 4 秒）。
+     */
+    private fun jsPick(which: String): String {
+        return "(function(){" +
+                "var w='" + which + "';var n=0;" +
+                "function go(){try{if(typeof pick==='function'){pick(w);return true}}" +
+                "catch(e){}return false}" +
+                "if(go())return;" +
+                "var t=setInterval(function(){n++;if(go()||n>50){clearInterval(t)}},80)" +
+                "})();"
+    }
+
     /**
      * 哪个页签对应哪个网页。
      *
@@ -2396,7 +2666,12 @@ class MainActivity : ComponentActivity() {
         WbTab.Chat -> ""
         WbTab.Calls -> ""
         WbTab.Board -> localBase()
-        WbTab.Console -> consoleUrl()   // 控制台 = 8790（密钥/调用记录/终端）
+        // WB-CONSOLE-ONE-PAGE
+        // 控制台返回纯地址。页签切换不走 URL —— 见 ToolPane 里那段：
+        // WebView 已经加载过时，直接 evaluateJavascript 调网页的 pick()。
+        // 之前靠 URL 参数切页签，实测点了「思考」还是显示「密钥」：
+        // 页面已加载的情况下 loadUrl 换 query 不一定真的重新执行页面脚本。
+        WbTab.Console -> consoleUrl()
         WbTab.Settings -> ""            // 设置是原生页，没有网址
     }
 
@@ -2803,15 +3078,53 @@ class MainActivity : ComponentActivity() {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    private fun openBatterySettings() {
-        try {
-            startActivity(
-                Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-            )
-        } catch (_: Throwable) {
-            toast("打不开电池优化设置")
-        }
+    /** 这个包是否已经在电池优化白名单里。 */
+    private fun isBatteryExempt(): Boolean = try {
+        val pm = getSystemService(android.os.PowerManager::class.java)
+        pm?.isIgnoringBatteryOptimizations(packageName) == true
+    } catch (_: Throwable) {
+        false
     }
+
+    /**
+     * WB-BATTERY 申请电池优化豁免。
+     *
+     * 优先弹系统那个「是否允许后台…」的确认框（ACTION_REQUEST_IGNORE_
+     * BATTERY_OPTIMIZATIONS，需要清单里声明 REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+     * 权限，我们已经有）。
+     *
+     * 失败就退到两个更弱的入口：
+     *   ① 本应用的详情页（用户在「电池」那一栏自己点）
+     *   ② 电池优化列表页
+     * 之所以要退化：国产 ROM 经常把这个 action 拦掉。
+     * 做法参考 WorkBuddy-Hub 的 requestBatteryExemption()。
+     */
+    private fun requestBatteryExemption() {
+        val pkgUri = android.net.Uri.parse("package:$packageName")
+        val tries = listOf(
+            Intent(
+                android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                pkgUri
+            ),
+            Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                pkgUri
+            ),
+            Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+        )
+        for (it in tries) {
+            try {
+                startActivity(it)
+                return
+            } catch (_: Throwable) {
+                // 下一个
+            }
+        }
+        toast("打不开电池优化设置，请到系统设置里手动允许后台运行")
+    }
+
+    /** 兼容旧调用（菜单里那个「电池优化」）。 */
+    private fun openBatterySettings() = requestBatteryExemption()
 
     override fun onResume() {
         super.onResume()
@@ -2826,9 +3139,16 @@ class MainActivity : ComponentActivity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        // 优先让 WebView 后退（页面内部有层级），退不动再交给系统
+        /* 优先让 WebView 后退（页面内部有层级），退不动再交给系统。
+           
+           WB-BACK-CONSOLE
+           控制台例外：每次切「密钥 / 思考」都会 loadUrl 一个新地址
+           （带 ?tab= 和时间戳），所以它的历史栈里全是这种"同一个页面的
+           不同参数"。按返回键如果先 goBack，就会退到上一个参数版本 ——
+           看起来像"页面自己跳回去了"，很怪。
+           这里直接跳过控制台的后退，让它走下面的"回看板"逻辑。 */
         val w = if (currentTab == WbTab.Board) web else webTool
-        if (w != null && w.canGoBack()) {
+        if (currentTab != WbTab.Console && w != null && w.canGoBack()) {
             w.goBack()
             return
         }
@@ -2884,6 +3204,27 @@ class MainActivity : ComponentActivity() {
                         callsPage = page
                     }
                 }
+            }
+        }
+
+        /**
+         * WB-THINK-MERGE 控制台「思考」页读 App 侧的对话默认档位。
+         *
+         * 那一页现在是控制台自己渲染的 HTML（同源加载），
+         * 所以能直接用这个桥 —— 之前是 iframe 跨端口，读不到。
+         */
+        @android.webkit.JavascriptInterface
+        fun getThinkLevel(): String = prefs.thinkLevel()
+
+        /** 控制台「思考」页改对话默认档位。 */
+        @android.webkit.JavascriptInterface
+        fun setThinkLevel(lv: String?) {
+            val v = (lv ?: "").trim().lowercase()
+            if (v != "off" && v != "low" && v != "high" && v != "max") return
+            runOnUiThread {
+                prefs.setThinkLevel(v)
+                thinkLevel = v
+                chatState = chatState.copy(effort = v)
             }
         }
 

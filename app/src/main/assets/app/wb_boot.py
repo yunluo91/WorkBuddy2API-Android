@@ -327,104 +327,169 @@ def _page():
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>思考调试台 · WorkBuddy2API</title>
 <style>
-:root{--bg:#0e1116;--card:#161b22;--line:#232a33;--fg:#e6edf3;--dim:#8b949e;
---accent:#0dbd8b;--warn:#f0883e}
+/* WB-THINK-UI
+   原来这页是四张圆角大卡片 + 竖排单选卡片 + 大段说明文字，
+   塞在 App 里显得很"生成感"。现在收紧成：
+     · 顶部一行标题 + 当前档位
+     · 一张设置卡：开关行 / 三格档位胶囊 / 强制关闭行 / 两个按钮
+     · 一个列表区：最近请求
+     · 说明文字挪进 <details>，要看才点开
+   配色沿用控制台那套变量，两页看起来是一个应用。 */
+:root{--bg:#0e1116;--card:#161b22;--card2:#1c232c;--line:#232a33;
+--fg:#e6edf3;--dim:#8b949e;--accent:#0dbd8b;--warn:#f0883e}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);
-font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif}
-.wrap{max-width:720px;margin:0 auto;padding:20px 16px 60px}
-h1{font-size:18px;margin:0 0 4px}
-.sub{color:var(--dim);font-size:12px;margin-bottom:18px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;
-padding:16px;margin-bottom:14px}
-.row{display:flex;align-items:center;gap:10px;padding:10px 0}
-label.opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;
-border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer}
-label.opt.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
-label.opt b{font-weight:600}
-label.opt small{display:block;color:var(--dim);font-size:12px}
-.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;
-border:1px solid var(--line);color:var(--dim)}
-.badge.ok{color:var(--accent);border-color:var(--accent)}
-.badge.warn{color:var(--warn);border-color:var(--warn)}
-button{background:var(--accent);color:#07110d;border:0;border-radius:10px;
-padding:10px 16px;font:inherit;font-weight:600;cursor:pointer}
-button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
-input[type=password]{width:100%;padding:10px 12px;border-radius:10px;
-border:1px solid var(--line);background:#0b0f14;color:var(--fg);font:inherit}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
-th{color:var(--dim);font-weight:500}
-code{background:#0b0f14;padding:1px 6px;border-radius:6px;font-size:12px}
-.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-</style></head><body><div class="wrap">
-<h1>思考调试台</h1>
-<div class="sub">WorkBuddy2API 手机版 · 改完立即生效，不用重启</div>
+font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;
+-webkit-font-smoothing:antialiased}
+.wrap{padding:10px 12px calc(16px + env(safe-area-inset-bottom))}
 
-<div class="card">
-  <div class="row" style="justify-content:space-between">
-    <span>当前生效档位</span><span id="cur" class="badge">读取中…</span>
-  </div>
-  <div class="row" style="justify-content:space-between;padding-top:0">
-    <span style="color:var(--dim);font-size:12px">环境变量 WB_DEFAULT_REASONING_EFFORT</span>
-    <code id="env" class="mono">-</code>
-  </div>
+/* 顶部一行 */
+.head{display:flex;align-items:center;gap:8px;padding:4px 2px 10px}
+.head .h{font-size:15px;font-weight:600}
+.head .sp{flex:1}
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;
+border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.badge.ok{color:var(--accent);border-color:rgba(13,189,139,.45);
+background:rgba(13,189,139,.12)}
+.badge.warn{color:var(--warn);border-color:rgba(240,136,62,.45);
+background:rgba(240,136,62,.12)}
+
+/* 卡片 */
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:12px 13px;margin-bottom:10px}
+
+/* 设置行：左边标题，右边开关 */
+.line{display:flex;align-items:center;gap:10px;padding:7px 0}
+.line .lab{flex:1;font-size:13.5px}
+.line .sub{font-size:11.5px;color:var(--dim);margin-top:1px}
+
+/* 开关（纯 CSS，不用原生 checkbox 那副老样子） */
+.sw{position:relative;width:42px;height:24px;flex:0 0 auto}
+.sw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.sw i{position:absolute;inset:0;border-radius:999px;background:var(--card2);
+border:1px solid var(--line);transition:.18s}
+.sw i::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;
+border-radius:50%;background:var(--dim);transition:.18s}
+.sw input:checked+i{background:rgba(13,189,139,.22);border-color:rgba(13,189,139,.5)}
+.sw input:checked+i::after{left:20px;background:var(--accent)}
+
+/* 档位胶囊：三格等分，选中的亮一档 */
+.seg{display:flex;gap:5px;margin:7px 0 3px}
+.opt{flex:1;margin:0;padding:9px 4px;text-align:center;cursor:pointer;
+border:1px solid var(--line);border-radius:9px;background:transparent;
+transition:.15s;user-select:none}
+.opt input{display:none}
+.opt span b{font-size:13px;font-weight:600;color:var(--dim)}
+.opt small{display:none}          /* 说明挪到下面一行，胶囊里只留名字 */
+.opt.on{background:var(--card2);border-color:rgba(13,189,139,.5)}
+.opt.on span b{color:var(--accent)}
+.opt:active{border-color:var(--accent)}
+
+.hint{font-size:11.5px;color:var(--dim);line-height:1.5;margin:2px 0 6px}
+.msg{font-size:11.5px;color:var(--accent);min-height:16px;margin-top:2px}
+
+.acts{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+button{background:var(--accent);color:#07110d;border:0;border-radius:9px;
+padding:9px 15px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+
+/* 小标题 */
+.sec{display:flex;align-items:baseline;gap:8px;padding:6px 2px 8px}
+.sec span:first-child{font-size:13.5px;font-weight:600}
+.sec .dim{font-size:11.5px;color:var(--dim)}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:6px 5px;border-bottom:1px solid var(--line);
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+th{color:var(--dim);font-weight:500;font-size:11.5px}
+tr:last-child td{border-bottom:0}
+td.mono,th.mono,.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.tblwrap{overflow-x:auto;margin:0 -2px}
+
+/* 说明折叠 */
+details{margin-top:2px}
+summary{cursor:pointer;font-size:11.5px;color:var(--dim);padding:5px 2px;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸ ";font-size:10px}
+details[open] summary::before{content:"▾ "}
+details p{font-size:11.5px;color:var(--dim);line-height:1.65;margin:2px 0 6px}
+details b{color:var(--fg);font-weight:600}
+
+input[type=password]{width:100%;padding:9px 11px;border-radius:9px;
+border:1px solid var(--line);background:#0b0f14;color:var(--fg);font:inherit;
+margin-top:6px}
+code{background:#0b0f14;padding:1px 6px;border-radius:5px;font-size:11.5px}
+</style></head><body><div class="wrap">
+
+<div class="head">
+  <span class="h">思考</span>
+  <span class="sp"></span>
+  <span id="cur" class="badge">读取中…</span>
 </div>
 
 <div class="card">
-  <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);margin-bottom:8px">
-    <label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:600">
-      <input type="checkbox" id="enabled" style="width:18px;height:18px">
-      <span>启用档位调节（主开关）</span>
-    </label>
+  <div class="line">
+    <div class="lab">启用档位调节
+      <div class="sub">关掉就按上游默认走，不再干预</div>
+    </div>
+    <label class="sw"><input type="checkbox" id="enabled"><i></i></label>
   </div>
-  <div id="offNote" style="color:var(--dim);font-size:12px;padding:4px 0 10px;display:none">
-    未启用 —— 当前按上游默认（high）走，客户端不传 effort 就会被补成最高档。打开主开关才能真正关掉思考。
+
+  <div id="offNote" class="hint" style="display:none">
+    未启用时客户端不传 effort 会被补成最高档。主开关打开才真正可控。
   </div>
+
   <div id="tunePad">
-  <div style="margin-bottom:10px">默认档位<span style="color:var(--dim)"> —— 客户端没写 reasoning_effort 时用哪档</span></div>
-  <div id="opts"></div>
-  <div class="row">
-    <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-      <input type="checkbox" id="force">
-      <span>强制关闭 <span style="color:var(--dim);font-size:12px">—— 连客户端显式给的档位也抹掉，一律不思考</span></span>
-    </label>
+    <div class="lab" style="padding-top:6px">默认档位</div>
+    <div class="seg" id="opts"></div>
+    <div class="hint" id="modeHint">—</div>
+
+    <div class="line">
+      <div class="lab">强制关闭
+        <div class="sub">连客户端显式给的档位也抹掉</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="force"><i></i></label>
+    </div>
   </div>
-  </div>
-  <div class="row" style="justify-content:flex-end;gap:8px">
+
+  <div class="acts">
     <button class="ghost" onclick="load()">刷新</button>
     <button onclick="save()">保存并生效</button>
   </div>
-  <div id="msg" style="color:var(--accent);font-size:12px;min-height:18px"></div>
+  <div id="msg" class="msg"></div>
 </div>
 
-<div class="card">
-  <div class="row" style="justify-content:space-between">
-    <span>上游「思考等级挡位映射」</span><span id="umap" class="badge">读取中…</span>
-  </div>
-  <div style="color:var(--dim);font-size:12px;line-height:1.7;margin-top:6px">
-    客户端传入的思考等级不在模型支持列表时，自动改写为该模型的默认档位，避免上游直接拒绝整个请求。档位来自上游模型目录；模型不允许关闭思考时，「关闭思考」也会改为默认档位。默认开启。
-  </div>
-  <div style="color:var(--warn);font-size:12px;line-height:1.7;margin-top:8px">
-    ⚠ 这个开关在面板「设置」页，和上面那个主开关是两回事。它只管「档位不合法时兜底改写」，<b>关掉它并不会让思考停下来</b>；真正决定思不思考的是上面的默认档位。
-  </div>
+<div class="sec">
+  <span>最近请求</span>
+  <span class="dim">网关发给上游的最终值</span>
 </div>
-
-<div class="card">
-  <div style="margin-bottom:10px">最近请求 <span style="color:var(--dim);font-size:12px">（发往上游前，网关最终用的值）</span></div>
-  <div style="overflow:auto"><table>
+<div class="card" style="padding:4px 10px 8px">
+  <div class="tblwrap"><table>
     <thead><tr><th>时间</th><th>模型</th><th>effort</th><th>thinking</th></tr></thead>
     <tbody id="rows"><tr><td colspan="4" style="color:var(--dim)">还没有请求</td></tr></tbody>
   </table></div>
 </div>
 
+<details>
+  <summary>档位映射 <span id="umap" class="badge">读取中…</span></summary>
+  <p>客户端传的等级不在模型支持列表时，自动改写为该模型的默认档，
+     避免上游直接拒掉整个请求。默认开启。</p>
+  <p>这个开关在网关「设置」页，和上面的主开关是两回事 ——
+     它只管<b>兜底改写</b>，关掉它并不会让思考停下来。</p>
+  <p style="opacity:.8">环境变量 <code id="env" class="mono">-</code></p>
+</details>
+
 <div class="card" id="pwcard" style="display:none">
-  <div style="margin-bottom:8px">这个页面从别的设备打开了，先填面板密码</div>
+  <div class="sub" style="font-size:12px">这个页面是从别的设备打开的，先填面板密码</div>
   <input type="password" id="pwd" placeholder="面板密码">
 </div>
+
 </div>
 <script>
 var DESC=__DESC__, MODES=__MODES__, STATE={mode:"off",force_off:false};
+/* WB-THINK-UI 档位中文名。英文原名还留在 title 里备查。 */
+var NAME={off:"不思考",catalog:"按模型默认",high:"最高档"};
 function pwd(){ return localStorage.getItem("wbdbg_pwd")||""; }
 function q(url){
   var p=pwd();
@@ -434,7 +499,7 @@ function q(url){
 function render(){
   var on=STATE.enabled!==false;
   document.getElementById("enabled").checked=on;
-  document.getElementById("cur").textContent=(on?STATE.mode:"未启用");
+  document.getElementById("cur").textContent=(on?(NAME[STATE.mode]||STATE.mode):"未启用");
   document.getElementById("cur").className="badge "+(on&&STATE.mode==="off"?"ok":"warn");
   document.getElementById("env").textContent=STATE.env||"(未设置，走上游默认)";
   var um=document.getElementById("umap");
@@ -449,15 +514,19 @@ function render(){
   if(pad){ pad.style.opacity=on?"1":".38"; pad.style.pointerEvents=on?"auto":"none"; }
   var box=document.getElementById("opts");
   box.innerHTML="";
+  /* WB-THINK-UI 说明不进胶囊（挤），统一显示在下面那行 modeHint。 */
   MODES.forEach(function(m){
     var d=document.createElement("label");
     d.className="opt"+(STATE.mode===m?" on":"");
+    d.title=(m+(DESC[m]?(" — "+DESC[m]):""));
     d.innerHTML='<input type="radio" name="mode" value="'+m+'"'+(STATE.mode===m?" checked":"")+
       (on?"":" disabled")+
-      '><span><b>'+m+'</b><small>'+(DESC[m]||"")+'</small></span>';
+      '><span><b>'+(NAME[m]||m)+'</b></span>';
     d.onclick=function(){ STATE.mode=m; render(); };
     box.appendChild(d);
   });
+  var mh=document.getElementById("modeHint");
+  if(mh) mh.textContent=DESC[STATE.mode]||"";
   var en=document.getElementById("enabled");
   if(en && !en._bound){
     en._bound=1;

@@ -135,7 +135,17 @@ app/src/main/
 
 ## 许可
 
-GPL-3.0。见 [LICENSE](LICENSE)。
+**MIT**，见 [LICENSE](LICENSE)。
 
-底栏那几个文件（`ui/glass/`）改编自 NPatch-miuix，那份是 GPL-3.0，
-所以整个工程跟随 GPL-3.0。
+Copyright (c) 2026 陨落(落山鸡高级二改王)
+
+二次修改、再分发、商用都可以，保留版权与许可声明即可。
+
+### 来源与例外
+
+- Python 网关部分（`assets/app/`）来自 WorkBuddy2API 原项目，原项目是 MIT
+- `ui/glass/` 下四个文件改编自 NPatch-miuix，那份是 **GPL-3.0**，
+  这四个文件及其衍生仍是 GPL-3.0
+- 品牌图标来自 [lobehub/icons](https://github.com/lobehub/lobe-icons)（MIT）
+
+完整的第三方清单与例外说明见 [NOTICE](NOTICE)。

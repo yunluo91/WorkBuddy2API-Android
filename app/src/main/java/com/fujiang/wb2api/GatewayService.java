@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 
 /** 前台服务：让 Python 网关在锁屏 / 切后台时也活着。 */
 public class GatewayService extends Service {
@@ -23,6 +24,19 @@ public class GatewayService extends Service {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean ticking = false;
+
+    /**
+     * WB-WAKELOCK 部分唤醒锁。
+     *
+     * 为什么需要：屏幕一关，CPU 可能进浅睡，socket 不再被及时服务，
+     * 上游连接超时、健康检查失败，用户看到的就是"掉线"。
+     * PARTIAL_WAKE_LOCK 让 CPU 保持醒着（屏幕仍然可以关）。
+     *
+     * 只在这个服务活着期间持有，onDestroy 里一定释放 ——
+     * 忘了释放会明显费电，这点比"多活一会儿"更重要。
+     * 做法跟 WorkBuddy-Hub 的 BridgeService 一样。
+     */
+    private PowerManager.WakeLock wakeLock = null;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -38,6 +52,29 @@ public class GatewayService extends Service {
     public void onCreate() {
         super.onCreate();
         createChannel();
+        acquireWakeLock();
+    }
+
+    private void acquireWakeLock() {
+        if (wakeLock != null && wakeLock.isHeld()) return;
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm == null) return;
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "wb2api:gateway");
+            wakeLock.setReferenceCounted(false);
+            wakeLock.acquire();
+        } catch (Throwable t) {
+            android.util.Log.w("GatewayService", "wake lock 拿不到", t);
+            wakeLock = null;
+        }
+    }
+
+    private void releaseWakeLock() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+        } catch (Throwable ignored) {
+        }
+        wakeLock = null;
     }
 
     @Override
@@ -48,6 +85,7 @@ public class GatewayService extends Service {
         if (ACTION_STOP.equals(action)) {
             ticking = false;
             handler.removeCallbacks(tick);
+            releaseWakeLock();
             PyRunner.shutdown();
             stopSelf();
             return START_NOT_STICKY;
@@ -68,6 +106,7 @@ public class GatewayService extends Service {
     public void onDestroy() {
         ticking = false;
         handler.removeCallbacks(tick);
+        releaseWakeLock();
         super.onDestroy();
     }
 
