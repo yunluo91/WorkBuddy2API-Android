@@ -128,7 +128,6 @@ app/src/main/
 | [Chaquopy](https://chaquo.com/chaquopy/) | MIT |
 | [Jetpack Compose](https://developer.android.com/jetpack/compose) | Apache-2.0 |
 | [kyant0/backdrop](https://github.com/Kyant0/Backdrop) | Apache-2.0 |
-| 玻璃底栏交互（`FloatingGlassBottomBar` 等） | 改编自 NPatch-miuix |
 | 品牌图标 | [lobehub/icons](https://github.com/lobehub/lobe-icons) · MIT |
 
 ---
@@ -141,11 +140,9 @@ Copyright (c) 2026 陨落(落山鸡高级二改王)
 
 二次修改、再分发、商用都可以，保留版权与许可声明即可。
 
-### 来源与例外
+### 来源
 
 - Python 网关部分（`assets/app/`）来自 WorkBuddy2API 原项目，原项目是 MIT
-- `ui/glass/` 下四个文件改编自 NPatch-miuix，那份是 **GPL-3.0**，
-  这四个文件及其衍生仍是 GPL-3.0
 - 品牌图标来自 [lobehub/icons](https://github.com/lobehub/lobe-icons)（MIT）
 
-完整的第三方清单与例外说明见 [NOTICE](NOTICE)。
+完整的第三方清单见 [NOTICE](NOTICE)。
