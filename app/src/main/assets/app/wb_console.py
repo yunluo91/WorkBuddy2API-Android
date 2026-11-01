@@ -1505,6 +1505,14 @@ color:var(--fg);font-size:13.5px;outline:none;font-family:inherit}
 .chlink{flex:1;min-width:0;background:#0b0f14;border:1px solid var(--line);
   border-radius:8px;padding:7px 9px;font-size:10.5px;line-height:1.45;
   color:var(--accent);word-break:break-all;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+/* WB-CHANNEL-PLUGIN-UI 照插件的渠道卡 */
+.chpill{font-size:11px;padding:2px 9px;border-radius:999px;
+  border:1px solid rgba(240,136,62,.45);color:var(--warn);
+  background:rgba(240,136,62,.12);white-space:nowrap}
+.chpill.ok{border-color:rgba(13,189,139,.45);color:var(--accent);
+  background:rgba(13,189,139,.12)}
+.chacts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
 </style></head><body>
 
 <div class="top">
@@ -1823,41 +1831,34 @@ function renderChannels(){
     box.innerHTML = '<div class="empty">没有匹配的渠道</div>';
     return;
   }
+  /* WB-CHANNEL-PLUGIN-UI 照插件的渠道页：
+       渠道名 + 已授权 / 未授权
+       [打开登录页] [一键领取] [退出登录]
+       剩余积分 · 实时积分
+       点「打开登录页」把授权链接贴在下面（不弹任何窗口） */
   box.innerHTML = rows.map(function(r){
-    return '<div class="chrow' + (r.enabled ? ' on' : '') + '">' +
+    var authed = !!(r.hasToken || r.hasCookie);
+    var at = r.tokenAt || r.cookieAt || '';
+    return '<div class="chrow' + (authed ? ' on' : '') + '">' +
       '<div class="chtop">' +
-        '<div class="chname">' + esc(r.name || r.id) +
-          ' <span class="chid">' + esc(r.prefix || r.id) + '/&lt;模型&gt;</span></div>' +
-        '<label class="chsw"><input type="checkbox"' + (r.enabled ? ' checked' : '') +
-          ' onchange="toggleChannel(\'' + esc(r.id) + '\', this.checked)"><i></i></label>' +
+        '<div class="chname">' + esc(r.name || r.id) + '</div>' +
+        '<span class="chpill' + (authed ? ' ok' : '') + '">' +
+          (authed ? '已授权' : '未授权') + '</span>' +
+      '</div>' +
+      '<div class="chmeta">' + esc(r.baseUrl || '') + '　·　' + esc(r.id) + '/&lt;模型&gt;' +
+        (at ? ('　·　' + esc(at)) : '') + '</div>' +
+      '<div class="chacts">' +
+        (authed
+          ? ('<button class="btn ghost mini" onclick="channelCredits(\'' + esc(r.id) + '\')">查积分</button>')
+          : ('<button class="btn mini" onclick="openChannelLogin(\'' + esc(r.id) + '\', \'' +
+               esc(r.website || '') + '\')">打开登录页</button>')) +
+        '<button class="btn ghost mini" onclick="channelCheckin(\'' + esc(r.id) + '\')">一键领取</button>' +
+        (authed
+          ? ('<button class="btn ghost mini" onclick="channelLogout(\'' + esc(r.id) + '\')">退出登录</button>')
+          : '') +
+        '<span class="chstat" id="chc-' + esc(r.id) + '"></span>' +
       '</div>' +
       '<div class="chlogin" id="chl-' + esc(r.id) + '" style="display:none"></div>' +
-      '<div class="chmeta">' + esc(r.baseUrl || '') +
-        (r.models ? '　·　' + r.models + ' 个模型' : '') +
-        (r.hasKey ? '' : '　·　没填 key') + '</div>' +
-      /* WB-CHANNEL-UIFIX
-         登录型渠道（插件里走 OAuth/浏览器登录的那些）不显示 API Key 输入框 ——
-         它们本来就该登录，摆一个填 key 的框只会让人以为要自己搞 key。
-         只有 API Key 型渠道才显示输入框。 */
-      (r.authKind === 'login'
-        ? ('<div class="chkeyrow">' +
-             '<button class="btn mini" onclick="openChannelLogin(\'' + esc(r.id) + '\', \'' +
-               esc(r.website || '') + '\')">登录</button>' +
-             '<button class="btn ghost mini" onclick="channelCheckin(\'' + esc(r.id) + '\')">签到</button>' +
-             '<span class="chstat" style="align-self:center">' +
-               (r.hasToken ? ('已登录 · ' + esc(r.tokenAt || '') )
-                           : (r.hasCookie ? ('已登录 · ' + esc(r.cookieAt || '')) : '未登录')) +
-             '</span>' +
-           '</div>')
-        : ('<div class="chkeyrow">' +
-             '<input type="password" placeholder="粘贴 API Key（留空表示不需要）" ' +
-               'id="chk-' + esc(r.id) + '">' +
-             '<button class="btn ghost mini" onclick="saveChannelKey(\'' + esc(r.id) + '\')">保存</button>' +
-           '</div>' +
-           '<div class="chkeyrow">' +
-             '<span class="chstat" style="align-self:center">' +
-               (r.hasKey ? '已填 Key' : '未填 Key') + '</span>' +
-           '</div>')) +
     '</div>';
   }).join('');
 }
@@ -1913,25 +1914,8 @@ async function openChannelLogin(id, site){
     }
     if(d && d.msg) toast(d.msg, 'bad');
   }catch(e){}
-  openChannelLoginPlain(id, site);
 }
 
-function openChannelLoginPlain(id, site){
-  try{
-    if(!window.WbBridge || !window.WbBridge.openLogin){
-      toast('这个版本不支持网页登录，请升级 App', 'bad');
-      return;
-    }
-    var url = site || '';
-    if(!url){
-      var row = (CH.rows || []).filter(function(x){ return x.id === id; })[0];
-      url = (row && row.baseUrl) ? row.baseUrl : '';
-    }
-    window.WbBridge.openLogin(id, url);
-  }catch(e){
-    toast('打不开登录窗口：' + e.message, 'bad');
-  }
-}
 
 /* WB-CHANNEL-CHECKIN 通用签到 */
 async function channelCheckin(id){
@@ -1974,6 +1958,31 @@ function copyLoginLink(id){
   try{
     copyText(url).then(function(){}, function(){});
   }catch(e){}
+}
+
+async function channelLogout(id){
+  try{
+    var d = await fetch('/api/channels/logout', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: id})
+    }).then(function(r){ return r.json(); });
+    if(d && d.ok){ toast('已退出 ' + id, 'ok'); loadChannels(); }
+    else toast('退出失败：' + (d && d.msg || '未知'), 'bad');
+  }catch(e){ toast('退出失败：' + e.message, 'bad'); }
+}
+
+async function channelCredits(id){
+  var el = document.getElementById('chc-' + id);
+  if(el) el.textContent = '查询中…';
+  try{
+    var d = await fetch('/api/channels/credits', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: id})
+    }).then(function(r){ return r.json(); });
+    if(el) el.textContent = d && d.ok ? (d.msg || '') : ('未取到：' + ((d && d.msg) || ''));
+  }catch(e){
+    if(el) el.textContent = '查询失败：' + e.message;
+  }
 }
 
 async function toggleChannel(id, on){
@@ -3263,6 +3272,28 @@ class Handler(BaseHTTPRequestHandler):
                     _accounts_dir(), str(body2.get("id") or "").strip()))
             except Exception as exc:
                 _json_send(self, 200, {"ok": False, "pending": False, "msg": str(exc)})
+            return
+        if path == "/api/channels/logout":
+            if not self._token_ok():
+                self._deny()
+                return
+            try:
+                body2 = body if isinstance(body, dict) else {}
+                _json_send(self, 200, wb_channels.logout(
+                    _accounts_dir(), str(body2.get("id") or "").strip()))
+            except Exception as exc:
+                _json_send(self, 200, {"ok": False, "msg": str(exc)})
+            return
+        if path == "/api/channels/credits":
+            if not self._token_ok():
+                self._deny()
+                return
+            try:
+                body2 = body if isinstance(body, dict) else {}
+                _json_send(self, 200, wb_channels.credits(
+                    _accounts_dir(), str(body2.get("id") or "").strip()))
+            except Exception as exc:
+                _json_send(self, 200, {"ok": False, "msg": str(exc)})
             return
         if path == "/api/channels/login-url":
             if not self._token_ok():

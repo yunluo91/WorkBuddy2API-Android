@@ -864,6 +864,76 @@ def checkin(accounts_dir, cid):
         return {"ok": False, "id": cid, "msg": str(exc)}
 
 
+def logout(accounts_dir, cid):
+    """退出登录：清掉 token / cookie / oauthSession。"""
+    rows = load(accounts_dir)
+    hit = _chan_by_id(rows, cid)
+    if hit is None:
+        return {"ok": False, "msg": "没有这个渠道: %s" % cid}
+    hit["token"] = ""
+    hit["refreshToken"] = ""
+    hit["tokenAt"] = ""
+    hit["cookie"] = ""
+    hit["cookieAt"] = ""
+    hit["oauthSession"] = {}
+    save(accounts_dir, rows)
+    return {"ok": True, "id": cid}
+
+
+# 各家「查积分」的接口（照插件 credits 模块里的路径）
+CREDIT_KINDS = {
+    "lobsterai": "/api/user/quota",
+    "loomy": "/points/records",
+}
+
+
+def credits(accounts_dir, cid):
+    """读一次剩余积分 / 额度，返回一句人话。"""
+    rows = load(accounts_dir)
+    hit = _chan_by_id(rows, cid)
+    if hit is None:
+        return {"ok": False, "msg": "没有这个渠道: %s" % cid}
+    if not (hit.get("token") or hit.get("cookie")):
+        return {"ok": False, "msg": "未授权"}
+    kind = str(hit.get("checkinKind") or "")
+    path = CREDIT_KINDS.get(kind)
+    if not path:
+        return {"ok": False, "msg": "这个渠道还没有积分接口"}
+    try:
+        doc = request(hit, path, timeout=20)
+    except Exception as exc:
+        return {"ok": False, "msg": "查询失败：%s" % exc}
+
+    # 从各家结构里挖一个数字出来（找不到就原样回一段）
+    def pick_num(o, depth=0):
+        if depth > 4:
+            return None
+        if isinstance(o, dict):
+            for k in ("balance", "credits", "remaining", "quota", "total",
+                      "point", "points", "available"):
+                v = o.get(k)
+                if isinstance(v, (int, float)):
+                    return int(v)
+                if isinstance(v, str) and v.strip().isdigit():
+                    return int(v.strip())
+            for v in o.values():
+                got = pick_num(v, depth + 1)
+                if got is not None:
+                    return got
+        elif isinstance(o, list):
+            for v in o[:5]:
+                got = pick_num(v, depth + 1)
+                if got is not None:
+                    return got
+        return None
+
+    n = pick_num(doc)
+    if n is not None:
+        return {"ok": True, "id": cid, "credits": n, "msg": "剩余 %d" % n}
+    return {"ok": True, "id": cid, "credits": None,
+            "msg": "已查询（结构未识别）", "raw": json.dumps(doc, ensure_ascii=False)[:300]}
+
+
 def describe(rows):
     """给控制台看的摘要。"""
     return [{
