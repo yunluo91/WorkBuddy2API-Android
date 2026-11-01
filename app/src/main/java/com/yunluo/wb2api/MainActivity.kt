@@ -739,8 +739,8 @@ class MainActivity : ComponentActivity() {
                 val tabName = if (pending.isNotEmpty()) {
                     pendingConsoleTab = ""
                     pending
-                } else if (consoleSubView == "think") {
-                    "think"
+                } else if (consoleSubView == "think" || consoleSubView == "channels") {
+                    consoleSubView
                 } else {
                     "keys"
                 }
@@ -908,6 +908,7 @@ class MainActivity : ComponentActivity() {
                     "models" to "模型",
                     "keys" to "密钥",
                     "think" to "思考",
+                    "channels" to "渠道",
                 ),
                 selected = consoleSubView,
                 onSelect = { key ->

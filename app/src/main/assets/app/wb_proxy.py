@@ -78,6 +78,7 @@ import wb_settings
 import wb_webprompts
 import wb_tiers
 import wb_upstream_pool
+import wb_channels
 import wb_webtools
 import wb_identity
 import wb_prompt
@@ -19169,6 +19170,23 @@ class Handler(BaseHTTPRequestHandler):
                     "required": "standard",
                     "at": gate_at,
                 }
+        # WB-CHANNELS 把外部渠道的模型并进来，名字带 <渠道>/ 前缀。
+        #
+        # 硬保证：**没有启用任何渠道时，这里什么都不做**，
+        # data 保持原样，wb 那条链路的行为一个字节都不变。
+        # 外部渠道不走账号池、不受 tier 门控，所以放在所有 WorkBuddy
+        # 过滤之后，免得混进前面的逻辑被误删。
+        try:
+            ch_rows = wb_channels.load(ACCOUNTS_DIR)
+            if wb_channels.enabled(ch_rows):
+                extra = wb_channels.as_models(ch_rows)
+                if extra:
+                    data = list(data) + extra
+        except Exception as exc:
+            try:
+                log("channels: model merge failed: %r" % (exc,), level="WARN")
+            except Exception:
+                pass
         payload = {"object": "list", "data": data,
                    "realm": req_realm or CURRENT_REALM}
         # 来源说明（面板展示用）：这批清单是上游 API 实时取的，还是读的
@@ -22553,6 +22571,80 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             _release_key_slot(self.key_entry)
 
+    # ---------------------------------------------------------- WB-CHANNELS
+
+    def _external_channel(self, model_id):
+        """<渠道>/<模型> 就返回 (渠道, 真实模型名)，否则 None。"""
+        try:
+            return wb_channels.resolve(wb_channels.load(ACCOUNTS_DIR), model_id)
+        except Exception:
+            return None
+
+    def _proxy_external_channel(self, chan, model, payload):
+        """把请求原样转给渠道，响应按字节流回写。
+
+        为什么不做任何改写：这些渠道本来就是 OpenAI 兼容端点，
+        客户端给的 reasoning_effort / tools / stream 直接传过去最省事，
+        也避免我们在中间猜错格式。
+        """
+        try:
+            upstream = wb_channels.forward(chan, model, payload)
+        except urllib.error.HTTPError as exc:
+            raw = b""
+            try:
+                raw = exc.read()
+            except Exception:
+                pass
+            try:
+                log("channel %s: HTTP %s" % (chan.get("id"), exc.code), level="WARN")
+            except Exception:
+                pass
+            self.send_response(exc.code)
+            self.send_header("Content-Type",
+                             exc.headers.get("Content-Type") or "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            if cors_origin_allowed(self.path):
+                self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            try:
+                self.wfile.write(raw)
+                self.wfile.flush()
+            except Exception:
+                pass
+            return
+        except Exception as exc:
+            try:
+                log("channel %s failed: %r" % (chan.get("id"), exc), level="WARN")
+            except Exception:
+                pass
+            return self._error(502, "channel %s: %s" % (chan.get("id"), exc))
+
+        ctype = upstream.headers.get("Content-Type") or "application/json"
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
+        if cors_origin_allowed(self.path):
+            self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        try:
+            while True:
+                chunk = upstream.read(4096)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                self.wfile.flush()
+        except Exception as exc:
+            try:
+                log("channel %s stream broke: %r" % (chan.get("id"), exc), level="WARN")
+            except Exception:
+                pass
+        finally:
+            try:
+                upstream.close()
+            except Exception:
+                pass
+
     def _dispatch_chat_post(self, path, payload):
         # 先挡背景请求：Codex 自己发的（记忆整理／环境建议／自动复核）
         # 不算「使用者实际使用」，一律本地拒绝，不碰上游。
@@ -22566,6 +22658,13 @@ class Handler(BaseHTTPRequestHandler):
                     pass
                 return self._error(400, background_request_message(reason),
                                    "invalid_request_error")
+        # WB-CHANNELS 多渠道分流。
+        # 模型名写成 <渠道>/<模型> 就交给那家，剩下全部透传：
+        # 不进账号池、不改 effort、不记账 —— 这条路只做转发。
+        if path in ("/v1/chat/completions", "/chat/completions"):
+            hit = self._external_channel(payload.get("model"))
+            if hit is not None:
+                return self._proxy_external_channel(hit[0], hit[1], payload)
         if path in ("/v1/responses", "/responses",
                     "/v1/responses/compact", "/responses/compact"):
             return self._handle_responses(payload)
