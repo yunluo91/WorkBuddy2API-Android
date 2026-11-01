@@ -6,7 +6,7 @@
 外面套一层 Jetpack Compose 的原生界面，管账号、看调用记录、调思考档位、
 还能让模型读写手机上的文件。
 
-**当前版本：`1.8.0-app99` / `versionCode 100` / `compileSdk 36` / `minSdk 24`**
+**当前版本：`1.8.0-app100` / `versionCode 100` / `compileSdk 36` / `minSdk 24`**
 
 > `versionCode` 固定 100，不随版本递增。这样任意历史版本之间都能互相覆盖安装，
 > 不会出现「装了新版就装不回旧版」（`INSTALL_FAILED_VERSION_DOWNGRADE`）。
@@ -18,13 +18,17 @@
 | 项 | 值 |
 |---|---|
 | `applicationId`（装到设备上的包名） | `com.yunluo.wb2api` |
-| `namespace` / 源码包名 / R / BuildConfig | `com.fujiang.wb2api` |
+| `namespace` / 源码包名 / R / BuildConfig | `com.yunluo.wb2api` |
 | 桌面显示名 | `WorkBuddy2API 2` |
 
-`namespace` 故意和 `applicationId` 不一致：它只决定 `R` 与 `BuildConfig`
-生成在哪个包，用户看不到；改它就得动所有 `import ...R` 的地方，没有必要。
+四项统一，源码目录是 `java/com/yunluo/wb2api/`。
 
-两者不同还有个实际好处 —— 可以和旧包名的版本同时装在同一个设备上，数据互不干扰。
+更早的版本只改了 `applicationId`，`namespace` 还留在 `com.fujiang.wb2api`
+（当时的考虑是少动 `import R` 的地方）。后来把这个不一致抹平了 ——
+一个项目两个包名容易看糊涂。
+
+和旧包名的版本（`com.fujiang.wb2api`）仍然可以同时装在同一个设备上，
+数据互不干扰；两者端口不同（旧的 8788/8789/8790，新的 8888/8889/8890）。
 
 ---
 
@@ -146,7 +150,7 @@ app/src/main/
 │   ├── wb_console.py      控制台 + 内嵌网页
 │   ├── wb_boot.py         启动器 + 思考页
 │   └── dashboard.html     看板
-├── java/com/fujiang/wb2api/   （namespace 包名，见上面的「包名」）
+├── java/com/yunluo/wb2api/
 │   ├── MainActivity.kt    界面主体
 │   ├── GatewayService.java 前台服务
 │   ├── PyRunner.java      Python 生命周期
