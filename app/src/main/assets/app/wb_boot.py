@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """WorkBuddy2API 手机版 · 启动器 + 思考调试台
 
-这个文件不是上游 workbuddy2api-hub 的东西，是手机壳（com.fujiang.wb2api）自己加的，
+这个文件不是上游 workbuddy2api-hub 的东西，是手机壳（com.yunluo.wb2api）自己加的，
 放在 assets/app/ 里，每次启动由 PyRunner 用 runpy 跑起来，再由它去跑上游的 wb_proxy.py。
 
 它解决一个具体问题：上游的 default_reasoning_effort_mode() 默认是 high，

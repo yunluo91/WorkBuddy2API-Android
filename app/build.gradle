@@ -12,20 +12,21 @@ if (keystorePropsFile.exists()) {
 }
 
 android {
-    namespace 'com.fujiang.wb2api'
+    namespace 'com.yunluo.wb2api'
     compileSdk 36
     buildToolsVersion "36.0.0"
 
     defaultConfig {
-        // WB-NEW-PACKAGE 换成新包名，跟老包共存。
-        // namespace 故意保持 com.fujiang.wb2api 不动：
-        // 它只决定 R / BuildConfig 生成在哪个包，用户看不到；
-        // 改了就得动所有 import R 的地方，没必要冒这个险。
+        // WB-NEW-PACKAGE
+        // applicationId 和 namespace 现在都是 com.yunluo.wb2api，
+        // 源码目录也搬到了 java/com/yunluo/wb2api/。
+        // 当初为了少动代码，只改 applicationId、namespace 留着旧的；
+        // 后来把这个不一致也抹平了 —— 一个项目两个包名容易看糊涂。
         applicationId "com.yunluo.wb2api"
         minSdk 24
         targetSdk 34
         versionCode 100
-        versionName "1.8.0-app99"
+        versionName "1.8.0-app100"
 
         ndk {
             // 只打 arm64：手机基本都是 arm64，包体小一半
