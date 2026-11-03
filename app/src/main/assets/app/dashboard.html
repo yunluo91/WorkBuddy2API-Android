@@ -10322,6 +10322,12 @@ async function exportOne(uid){
     ta.value = line;
     ta.readOnly = true;
     ta.style.minHeight = '110px';
+    // 只有单账号这个框软换行：一行 3630 字符，不换行得横向拖
+    // 批量（exportAccountsText）那边保持原样，一个字不动
+    ta.setAttribute('wrap', 'soft');
+    ta.style.whiteSpace = 'pre-wrap';
+    ta.style.overflowWrap = 'anywhere';
+    ta.style.wordBreak = 'break-all';
 
     const foot = document.getElementById('accTextFoot');
     const copyBtn = document.createElement('button');
