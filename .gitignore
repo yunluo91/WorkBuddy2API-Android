@@ -31,3 +31,7 @@ settings.json
 thinking.json
 console.token
 control.port
+
+# Python 缓存
+__pycache__/
+*.pyc
