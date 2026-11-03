@@ -466,7 +466,6 @@ fun SettingsScreen(
         // ---------------- 当前状态
         item {
             SettingCard("当前状态") {
-                StatusRow("网关", "综合API网关")
                 StatusRow("网关端口", port.toString())
                 StatusRow("面板密码", panelPassword.ifEmpty { "（未设置）" })
                 StatusRow("root", if (hasRoot) "已授权" else "未授权")
@@ -491,9 +490,8 @@ fun SettingsScreen(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = "WorkBuddyAPI 手机版\n" +
-                                "内置网关：综合API网关 —— 把多家上游（WorkBuddy 账号池、" +
-                                "各平台反代、API Key 渠道）统一成一个 OpenAI 兼容端点，" +
-                                "附带调用记录、思考档位调节和可操作手机的 Agent 对话。",
+                                "把上游模型服务包成本地网关，附带调用记录、" +
+                                "账号池、思考档位调节和可操作手机的 Agent 对话。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

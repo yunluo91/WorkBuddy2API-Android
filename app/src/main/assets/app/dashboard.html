@@ -4753,7 +4753,8 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
     <!-- 活动记录入口：只读 GET /activity/history，账号区自己的控件，不另开页面。 -->
     <button class="sec" onclick="openActivityHistory()">签到记录</button>
     <button class="sec" onclick="openImport()">导入</button>
-    <button class="sec" onclick="exportAccounts(this)">导出</button>
+    <button class="sec" onclick="openManualImport()">粘贴导入</button>
+    <button class="sec" onclick="exportAccountsText(this)">导出</button>
     </div>
     <div class="tb-group">
     <button class="sec" onclick="fetchCredits(this)">一键刷新积分</button>
@@ -5828,6 +5829,9 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
               <option value="append">追加到 system</option>
               <option value="custom">替换 system</option>
             </select>
+            <button onclick="document.getElementById('setGlobalPromptFile').click()">导入</button>
+            <input id="setGlobalPromptFile" type="file" accept=".txt,.md,.json,.text,text/plain"
+                   style="display:none" onchange="importGlobalPromptFile(this)">
             <button onclick="saveGlobalPrompt(this)">保存</button>
           </div>
         </div>
@@ -10042,6 +10046,221 @@ async function deleteAccount(uid, name, btn){
   }
 }
 
+/* ---- 账号导出 / 导入（文本版） ----------------------------------------
+   文件夹那套在手机上太绕：导出了只说"已导出"，用户不知道文件在哪。
+   这里改成：导出 → 直接把内容摊在屏幕上，下面一个「复制全部」；
+             导入 → 一个粘贴框，贴进去点「解析并预览」。
+   一行一个账号，格式：wbacc1:<base64url(JSON)>
+   ---------------------------------------------------------------------- */
+
+/* 只保留重新导入需要的字段，否则单账号 JSON 有 15KB，一行没法看 */
+const ACC_TOKEN_FIELDS = ['uid','accessToken','refreshToken','realm','platform',
+                          'product','nickname','expiresAt','machineId','domain'];
+
+function b64uEncode(str){
+  // 浏览器 btoa 只吃 latin1，先转 UTF-8 字节
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for(let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+function b64uDecode(b64){
+  const pad = b64.length % 4 ? '='.repeat(4 - (b64.length % 4)) : '';
+  const bin = atob(b64.replace(/-/g,'+').replace(/_/g,'/') + pad);
+  const bytes = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function accToLine(a){
+  const keep = {};
+  for(const k of ACC_TOKEN_FIELDS){
+    if(a && a[k] !== undefined && a[k] !== null) keep[k] = a[k];
+  }
+  return 'wbacc1:' + b64uEncode(JSON.stringify(keep));
+}
+
+/* 一个自建的小弹窗，导出/导入共用 */
+function accTextDialog(title, hint){
+  let box = document.getElementById('accTextDlg');
+  if(box) box.remove();
+  box = document.createElement('div');
+  box.id = 'accTextDlg';
+  box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);'
+    + 'display:flex;align-items:center;justify-content:center;padding:16px';
+  box.innerHTML = ''
+    + '<div style="background:var(--panel,#161b22);border:1px solid var(--line,#232a33);'
+    + 'border-radius:14px;width:100%;max-width:560px;max-height:86vh;display:flex;'
+    + 'flex-direction:column;padding:16px;gap:10px">'
+    +   '<div style="display:flex;align-items:center;gap:8px">'
+    +     '<b style="font-size:15px">' + esc(title) + '</b>'
+    +     '<span style="flex:1"></span>'
+    +     '<button type="button" id="accTextClose" style="background:none;border:0;'
+    +       'color:var(--dim,#8b949e);font-size:19px;cursor:pointer;padding:0 4px">×</button>'
+    +   '</div>'
+    +   '<div style="font-size:12px;color:var(--dim,#8b949e);line-height:1.6">' + hint + '</div>'
+    +   '<textarea id="accTextBox" spellcheck="false" style="flex:1;min-height:220px;'
+    +     'width:100%;background:var(--panel2,#0e1116);color:var(--fg,#e6edf3);'
+    +     'border:1px solid var(--line,#232a33);border-radius:10px;padding:10px;'
+    +     'font:12px/1.6 ui-monospace,Menlo,Consolas,monospace;resize:vertical;'
+    +     'white-space:pre;overflow:auto"></textarea>'
+    +   '<div id="accTextFoot" style="display:flex;gap:8px;flex-wrap:wrap"></div>'
+    +   '<div id="accTextMsg" style="font-size:12px;color:var(--dim,#8b949e);min-height:16px"></div>'
+    + '</div>';
+  document.body.appendChild(box);
+  document.getElementById('accTextClose').onclick = () => box.remove();
+  box.addEventListener('click', (e) => { if(e.target === box) box.remove(); });
+  return box;
+}
+
+/* 导出：把内容摊在屏幕上，不落文件 */
+async function exportAccountsText(btn){
+  if(btn){ btn.disabled = true; btn.textContent = '读取中...'; }
+  try{
+    const r = await fetch('/accounts/export?secrets=1', {cache:'no-store', headers:authHeaders()});
+    if(r.status === 401 || r.status === 403){ panelSessionLost(); throw new Error('unauthorized'); }
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const doc = await r.json();
+    const rows = Array.isArray(doc) ? doc : (doc.accounts || []);
+    if(!rows.length) throw new Error('没有账号可导出');
+
+    const lines = rows.map(accToLine);
+    const box = accTextDialog('导出账号（文本）',
+      '每个账号一行，<code>wbacc1:</code> 开头，含 accessToken / refreshToken。'
+      + '点下面「复制全部」直接拷走，不用找文件。共 <b>' + lines.length + '</b> 条。');
+    const ta = document.getElementById('accTextBox');
+    ta.value = lines.join('\n');
+    ta.readOnly = true;
+
+    const foot = document.getElementById('accTextFoot');
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'primary';
+    copyBtn.textContent = '复制全部';
+    copyBtn.onclick = async () => {
+      try{
+        await navigator.clipboard.writeText(ta.value);
+        toast('已复制 ' + lines.length + ' 条账号', 'ok');
+      }catch(_){
+        ta.select(); document.execCommand('copy');
+        toast('已复制（回退方式）', 'ok');
+      }
+    };
+    const selBtn = document.createElement('button');
+    selBtn.type = 'button';
+    selBtn.textContent = '全选';
+    selBtn.onclick = () => { ta.focus(); ta.select(); };
+    foot.appendChild(copyBtn);
+    foot.appendChild(selBtn);
+    document.getElementById('accTextMsg').textContent = '';
+  }catch(e){
+    toast('导出失败: ' + e.message, 'err');
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '导出'; }
+  }
+}
+
+/* 从粘贴的文本里解析出账号行 */
+function parseAccLines(text){
+  const rows = [];
+  let bad = 0;
+  const raw = (text || '').trim();
+  if(!raw) return {rows, bad, empty:true};
+
+  // 整份 JSON 也能吃
+  if(raw.startsWith('{')){
+    try{
+      const doc = JSON.parse(raw);
+      const list = Array.isArray(doc) ? doc : (doc.accounts || []);
+      return {rows: list, bad: 0, empty: false};
+    }catch(_){ /* 落到逐行解析 */ }
+  }
+  for(const line of raw.split('\n')){
+    const t = line.trim();
+    if(!t) continue;
+    const body = t.startsWith('wbacc1:') ? t.slice(7) : t;
+    try{
+      const obj = JSON.parse(b64uDecode(body));
+      if(!obj || !obj.uid) throw new Error('缺 uid');
+      rows.push(obj);
+    }catch(_){ bad += 1; }
+  }
+  return {rows, bad, empty: false};
+}
+
+/* 导入：一个粘贴框 */
+function openManualImport(){
+  const box = accTextDialog('粘贴导入账号',
+    '把导出的 <code>wbacc1:…</code> 粘进来，一行一个。'
+    + 'uid 相同会覆盖、不同就新增。也可以直接贴整份 JSON。');
+  const ta = document.getElementById('accTextBox');
+  ta.placeholder = 'wbacc1:eyJ1aWQiOi...\nwbacc1:eyJ1aWQiOi...';
+
+  const foot = document.getElementById('accTextFoot');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'primary';
+  btn.textContent = '解析并预览';
+  btn.onclick = () => accImportPreview(ta.value);
+  foot.appendChild(btn);
+
+  setTimeout(() => ta.focus(), 60);
+}
+
+/* 解析 → dryRun → 预览 → 确认导入 */
+async function accImportPreview(text){
+  const msg = document.getElementById('accTextMsg');
+  const foot = document.getElementById('accTextFoot');
+  const parsed = parseAccLines(text);
+  if(parsed.empty){ msg.textContent = '输入框是空的'; return; }
+  if(!parsed.rows.length){ msg.textContent = '一行都没解析出来（' + parsed.bad + ' 行格式不对）'; return; }
+
+  const doc = {format:'workbuddy-accounts', version:1, count: parsed.rows.length, accounts: parsed.rows};
+  msg.textContent = '正在校验…';
+  try{
+    const r = await postJSON('/accounts/import', {data: doc, dryRun: true});
+    const res = r.result || {};
+    const added = (res.added || []).length;
+    const updated = (res.updated || []).length;
+    const invalid = (res.invalid || []).length;
+    const skipped = (res.skipped || []).length;
+    msg.innerHTML = '共 <b>' + parsed.rows.length + '</b> 条：新增 <b style="color:var(--accent2)">' + added
+      + '</b>，覆盖 <b>' + updated + '</b>'
+      + (skipped ? '，跳过 ' + skipped : '')
+      + (invalid ? '，无效 <b style="color:var(--bad)">' + invalid + '</b>' : '')
+      + (parsed.bad ? '（' + parsed.bad + ' 行解析失败，已忽略）' : '');
+
+    let okBtn = document.getElementById('accImportOk');
+    if(!okBtn){
+      okBtn = document.createElement('button');
+      okBtn.id = 'accImportOk';
+      okBtn.type = 'button';
+      okBtn.className = 'primary';
+      okBtn.textContent = '确认导入';
+      foot.appendChild(okBtn);
+    }
+    okBtn.style.display = invalid >= parsed.rows.length ? 'none' : '';
+    okBtn.onclick = async () => {
+      okBtn.disabled = true;
+      okBtn.textContent = '导入中…';
+      try{
+        const rr = await postJSON('/accounts/import', {data: doc, overwrite: true});
+        const r2 = rr.result || {};
+        toast('导入完成：新增 ' + (r2.added || []).length + '，覆盖 ' + (r2.updated || []).length, 'ok');
+        msg.innerHTML = '已导入。可以关掉这个窗口了。';
+        setTimeout(() => { try{ loadAccounts(); }catch(_){} }, 400);
+      }catch(e){
+        msg.textContent = '导入失败: ' + e.message;
+        okBtn.disabled = false;
+        okBtn.textContent = '确认导入';
+      }
+    };
+  }catch(e){
+    msg.textContent = '校验失败: ' + e.message;
+  }
+}
+
 /* ---- 账号导出 / 导入 ---- */
 async function downloadExport(query, fallbackLabel){
   // Fetch through the authorised JSON API and save the blob client-side.
@@ -13799,6 +14018,37 @@ async function resetDailyChatModule(btn){
   } finally {
     if(btn) btn.disabled = false;
   }
+}
+
+/**
+ * 全局提示词：从文件导入。
+ *
+ * 手机输入法对长文本限制多（候选栏挡、自动纠错、粘贴被截断），
+ * 所以给一个选文件的入口：选 .txt / .md 读进来填进文本框。
+ * 只填不保存 —— 用户还能改一下再点「保存」，避免手滑直接生效。
+ * 上限跟后端一致（64 KiB），超了截断并提示。
+ */
+function importGlobalPromptFile(input){
+  var file = input && input.files && input.files[0];
+  if(!file) return;
+  if(file.size > 64 * 1024){
+    toast('文件超过 64 KiB，已截断到 64 KiB 导入', 'warn');
+  }
+  var reader = new FileReader();
+  reader.onload = function(){
+    var text = String(reader.result || '');
+    var box = document.getElementById('setGlobalPromptText');
+    if(!box){ toast('找不到文本框', 'bad'); return; }
+    box.value = text.slice(0, 64 * 1024);
+    box.dispatchEvent(new Event('input'));
+    var st = document.getElementById('setGlobalPromptState');
+    if(st) st.textContent = '（已导入 ' + file.name + '，记得点保存）';
+    toast('已导入 ' + file.name + '，' + box.value.length + ' 字，记得点「保存」', 'ok');
+  };
+  reader.onerror = function(){ toast('读文件失败', 'bad'); };
+  // 按纯文本读；有些提示词文件是 .json，也当文本处理（保存的本来就是文本）
+  reader.readAsText(file, 'utf-8');
+  input.value = '';        // 允许再次选同一个文件
 }
 
 async function saveGlobalPrompt(btn){

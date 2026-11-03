@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""综合API网关 · 启动器 + 思考调试台
+"""WorkBuddy2API 手机版 · 启动器 + 思考调试台
 
 这个文件不是上游 workbuddy2api-hub 的东西，是手机壳（com.yunluo.wb2api）自己加的，
 放在 assets/app/ 里，每次启动由 PyRunner 用 runpy 跑起来，再由它去跑上游的 wb_proxy.py。

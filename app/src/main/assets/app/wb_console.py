@@ -23,8 +23,6 @@ import threading
 import time
 from urllib.parse import urlparse, parse_qs
 
-import wb_channels
-
 try:
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 except Exception:                                              # pragma: no cover
@@ -1460,59 +1458,6 @@ color:var(--fg);font-size:13.5px;outline:none;font-family:inherit}
 #paneThink td,#paneThink th{padding:6px 5px;border-bottom:1px solid var(--line);
   white-space:nowrap;text-align:left;font-size:12px}
 #paneThink tr:last-child td{border-bottom:0}
-
-/* WB-CHANNELS 渠道页 */
-.chhead{display:flex;align-items:center;gap:8px;padding:9px 12px;
-  border-bottom:1px solid var(--line)}
-.chsearch{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);
-  border-radius:9px;padding:8px 11px;color:var(--fg);font:inherit;font-size:13px}
-.chstat{font-size:11.5px;color:var(--dim);white-space:nowrap}
-.chlist{flex:1;overflow-y:auto;padding:9px 12px calc(96px + env(safe-area-inset-bottom));
-  display:flex;flex-direction:column;gap:7px}
-.chrow{background:var(--panel);border:1px solid var(--line);border-radius:11px;
-  padding:10px 12px}
-.chrow.on{border-color:rgba(13,189,139,.45);background:rgba(13,189,139,.06)}
-.chtop{display:flex;align-items:center;gap:9px}
-.chname{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--fg);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chid{font-size:11px;color:var(--dim);font-family:ui-monospace,Menlo,Consolas,monospace}
-.chsw{position:relative;width:38px;height:22px;flex:0 0 auto}
-.chsw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
-.chsw i{position:absolute;inset:0;border-radius:999px;background:var(--panel2);
-  border:1px solid var(--line);transition:.18s}
-.chsw i::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;
-  border-radius:50%;background:var(--dim);transition:.18s}
-.chsw input:checked+i{background:rgba(13,189,139,.22);border-color:rgba(13,189,139,.5)}
-.chsw input:checked+i::after{left:18px;background:var(--accent)}
-.chmeta{font-size:11px;color:var(--dim);margin-top:4px;
-  font-family:ui-monospace,Menlo,Consolas,monospace;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chkeyrow{display:flex;gap:6px;margin-top:7px}
-.chkeyrow input{flex:1;min-width:0;background:#0b0f14;border:1px solid var(--line);
-  border-radius:8px;padding:7px 10px;color:var(--fg);font:inherit;font-size:12px}
-.chfoot{padding:8px 14px calc(96px + env(safe-area-inset-bottom));
-  font-size:11px;color:var(--dim);line-height:1.6;border-top:1px solid var(--line)}
-
-.chadd{display:flex;flex-direction:column;gap:6px;padding:10px 12px;
-  border-bottom:1px solid var(--line);background:var(--panel)}
-.chadd input{background:#0b0f14;border:1px solid var(--line);border-radius:8px;
-  padding:8px 10px;color:var(--fg);font:inherit;font-size:12.5px;min-width:0}
-.chaddrow{display:flex;gap:6px}
-.chaddrow input{flex:1}
-
-/* WB-LINK-ONLY 授权链接展示 */
-.chlwrap{display:flex;gap:6px;align-items:flex-start;margin-top:7px}
-.chlink{flex:1;min-width:0;background:#0b0f14;border:1px solid var(--line);
-  border-radius:8px;padding:7px 9px;font-size:10.5px;line-height:1.45;
-  color:var(--accent);word-break:break-all;font-family:ui-monospace,Menlo,Consolas,monospace}
-
-/* WB-CHANNEL-PLUGIN-UI 照插件的渠道卡 */
-.chpill{font-size:11px;padding:2px 9px;border-radius:999px;
-  border:1px solid rgba(240,136,62,.45);color:var(--warn);
-  background:rgba(240,136,62,.12);white-space:nowrap}
-.chpill.ok{border-color:rgba(13,189,139,.45);color:var(--accent);
-  background:rgba(13,189,139,.12)}
-.chacts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
 </style></head><body>
 
 <div class="top">
@@ -1539,40 +1484,11 @@ color:var(--fg);font-size:13.5px;outline:none;font-family:inherit}
        数据接口不动 —— 那个页面自己会去 /api/state 拿数据。
        这样不用把思考档位的逻辑在两处各写一遍。 -->
   <div class="tab" id="tabThink" onclick="pick('think')">思考</div>
-  <!-- WB-CHANNELS 渠道：把外面那些反代项目接进来 -->
-  <div class="tab" id="tabChannels" onclick="pick('channels')">渠道</div>
 </div>
 
 <!-- ===================== 终端 ===================== -->
 <!-- WB-DROP-MODEL-TAB 模型清单页已移除（App 有原生版）。
      下面的 paneKeys 现在是默认页。 -->
-<!-- WB-CHANNELS 渠道页 -->
-<div class="pane" id="paneChannels">
-  <div class="chhead">
-    <input id="chQ" class="chsearch" placeholder="搜索渠道名 / 域名" oninput="renderChannels()">
-    <span id="chStat" class="chstat">—</span>
-    <button class="btn ghost mini" onclick="toggleAddChannel()">+ 添加</button>
-  </div>
-  <!-- 自定义渠道表单：把外面那些反代项目接进来 -->
-  <div class="chadd" id="chAdd" style="display:none">
-    <div class="chaddrow">
-      <input id="addId" placeholder="渠道 id（模型前缀，如 qoder）">
-      <input id="addName" placeholder="显示名（可空）">
-    </div>
-    <input id="addBase" placeholder="Base URL（如 http://127.0.0.1:8000/v1）">
-    <input id="addKey" type="password" placeholder="API Key（没有就留空）">
-    <div class="chaddrow">
-      <button class="btn mini" onclick="addChannel()">确定添加</button>
-      <button class="btn ghost mini" onclick="toggleAddChannel()">取消</button>
-    </div>
-  </div>
-  <div class="chlist" id="chList"><div class="empty">加载中…</div></div>
-  <div class="chfoot">
-    点「登录」在弹出的窗口里登账号，点「签到」领当天额度。
-    登录后模型会以 <code>渠道id/模型</code> 出现在模型清单里。
-  </div>
-</div>
-
 <div class="pane on" id="paneKeys">
 
   <!-- 顶部状态条：网关鉴权总开关 -->
@@ -1746,7 +1662,7 @@ window.onerror = function(msg, src, line, col, err){
     var m = location.search.match(/[?&]tab=([a-z]+)/i);
     if(m && m[1]){
       var want = m[1].toLowerCase();
-      if((want === 'keys' || want === 'think' || want === 'channels') && typeof pick === 'function'){
+      if((want === 'keys' || want === 'think') && typeof pick === 'function'){
         pick(want);
       }
     }
@@ -1782,241 +1698,6 @@ var hist=[],hi=0,sheetKind="";
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
-/* ==== WB-CHANNELS 渠道页 ====
- *
- * 抄的是 dsh-our-free-model 的渠道表思路：
- *   一张表（id / name / baseUrl / key / enabled），
- *   模型名带前缀 <渠道id>/<模型>，请求原样透传。
- *
- * 后端在 wb_proxy.py 里：/v1/models 会把这些渠道的模型并进来，
- * /v1/chat/completions 看到带前缀的模型名就转给对应渠道。
- */
-var CH = {rows: [], filter: ''};
-
-async function loadChannels(){
-  var box = document.getElementById('chList');
-  if(box) box.innerHTML = '<div class="empty">加载中…</div>';
-  try{
-    var d = await fetch('/api/channels').then(function(r){ return r.json(); });
-    if(d && d.error) throw new Error(d.error);
-    CH.rows = d.channels || [];
-    var st = document.getElementById('chStat');
-    if(st){
-      var loginRows = (d.channels || []).filter(function(r){ return r.authKind === 'login'; });
-      var on = loginRows.filter(function(r){ return r.enabled; }).length;
-      st.textContent = '启用 ' + on + ' / 共 ' + loginRows.length;
-    }
-    renderChannels();
-  }catch(e){
-    if(box) box.innerHTML = '<div class="empty">读取失败：' + esc(e.message) + '</div>';
-  }
-}
-
-function renderChannels(){
-  var box = document.getElementById('chList');
-  if(!box) return;
-  var q = (document.getElementById('chQ') || {}).value || '';
-  q = q.trim().toLowerCase();
-  /* WB-CHANNELS-LOGIN-ONLY
-     这一页只列「能登录 + 能签到」的渠道 —— 跟插件渠道页一致。
-     那些要自己填 API Key 的提供方（Agnes / Anthropic / Baidu…）
-     是插件里的另一个目录（providers registry），不是这一页的东西，
-     不在界面上出现，免得看着像要用户自己搞 key。 */
-  var rows = CH.rows.filter(function(r){
-    if(r.authKind !== 'login') return false;
-    if(!q) return true;
-    return (r.id + ' ' + (r.name||'') + ' ' + (r.baseUrl||'')).toLowerCase().indexOf(q) >= 0;
-  });
-  if(!rows.length){
-    box.innerHTML = '<div class="empty">没有匹配的渠道</div>';
-    return;
-  }
-  /* WB-CHANNEL-PLUGIN-UI 照插件的渠道页：
-       渠道名 + 已授权 / 未授权
-       [打开登录页] [一键领取] [退出登录]
-       剩余积分 · 实时积分
-       点「打开登录页」把授权链接贴在下面（不弹任何窗口） */
-  box.innerHTML = rows.map(function(r){
-    var authed = !!(r.hasToken || r.hasCookie);
-    var at = r.tokenAt || r.cookieAt || '';
-    return '<div class="chrow' + (authed ? ' on' : '') + '">' +
-      '<div class="chtop">' +
-        '<div class="chname">' + esc(r.name || r.id) + '</div>' +
-        '<span class="chpill' + (authed ? ' ok' : '') + '">' +
-          (authed ? '已授权' : '未授权') + '</span>' +
-      '</div>' +
-      '<div class="chmeta">' + esc(r.baseUrl || '') + '　·　' + esc(r.id) + '/&lt;模型&gt;' +
-        (at ? ('　·　' + esc(at)) : '') + '</div>' +
-      '<div class="chacts">' +
-        (authed
-          ? ('<button class="btn ghost mini" onclick="channelCredits(\'' + esc(r.id) + '\')">查积分</button>')
-          : ('<button class="btn mini" onclick="openChannelLogin(\'' + esc(r.id) + '\', \'' +
-               esc(r.website || '') + '\')">打开登录页</button>')) +
-        '<button class="btn ghost mini" onclick="channelCheckin(\'' + esc(r.id) + '\')">一键领取</button>' +
-        (authed
-          ? ('<button class="btn ghost mini" onclick="channelLogout(\'' + esc(r.id) + '\')">退出登录</button>')
-          : '') +
-        '<span class="chstat" id="chc-' + esc(r.id) + '"></span>' +
-      '</div>' +
-      '<div class="chlogin" id="chl-' + esc(r.id) + '" style="display:none"></div>' +
-    '</div>';
-  }).join('');
-}
-
-function toggleAddChannel(){
-  var el = document.getElementById('chAdd');
-  if(el) el.style.display = (el.style.display === 'none' ? 'flex' : 'none');
-}
-
-async function addChannel(){
-  var id = (document.getElementById('addId').value || '').trim();
-  var name = (document.getElementById('addName').value || '').trim();
-  var base = (document.getElementById('addBase').value || '').trim();
-  var key = (document.getElementById('addKey').value || '').trim();
-  if(!id){ toast('先填渠道 id', 'bad'); return; }
-  if(!/^[a-zA-Z0-9_.-]+$/.test(id)){ toast('id 只能用字母数字 _ . -', 'bad'); return; }
-  if(!base){ toast('先填 Base URL', 'bad'); return; }
-  try{
-    var d = await fetch('/api/channels/save', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id: id, name: name || id, baseUrl: base, key: key, enabled: true})
-    }).then(function(r){ return r.json(); });
-    if(d && d.error) throw new Error(d.error);
-    document.getElementById('addId').value = '';
-    document.getElementById('addName').value = '';
-    document.getElementById('addBase').value = '';
-    document.getElementById('addKey').value = '';
-    toggleAddChannel();
-    toast('已添加 ' + id, 'ok');
-    loadChannels();
-  }catch(e){
-    toast('添加失败：' + e.message, 'bad');
-  }
-}
-
-/* WB-CHANNEL-LOGIN 打开 App 里的登录窗口（走 JS 桥） */
-async function openChannelLogin(id, site){
-  /* WB-BROWSER-LOGIN
-     先请网关起一次「浏览器授权」：它在本地开个端口等回调，
-     回给我们授权地址。App 那边开个等待页把地址丢给浏览器，
-     授权完自动完成 —— 跟插件一模一样。
-     网关说这个渠道不支持浏览器授权，才退回「直接开站点首页抓 Cookie」。 */
-  try{
-    var d = await fetch('/api/channels/begin-login', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id: id})
-    }).then(function(r){ return r.json(); });
-    if(d && d.ok && d.url){
-      /* WB-LINK-ONLY 只给链接：不弹任何页面、不跳浏览器。
-         链接直接显示在那一行下面，同时写进剪贴板。 */
-      showLoginLink(id, d.url);
-      return;
-    }
-    if(d && d.msg) toast(d.msg, 'bad');
-  }catch(e){}
-}
-
-
-/* WB-CHANNEL-CHECKIN 通用签到 */
-async function channelCheckin(id){
-  try{
-    toast('正在签到 ' + id + ' …', 'ok');
-    var d = await fetch('/api/channels/checkin', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id: id})
-    }).then(function(r){ return r.json(); });
-    if(d && d.ok){
-      toast('签到成功：' + id, 'ok');
-    }else{
-      toast('签到失败：' + (d.msg || d.error || '未知原因'), 'bad');
-    }
-  }catch(e){
-    toast('签到失败：' + e.message, 'bad');
-  }
-}
-
-/* 把授权链接贴到这一行下面，并复制到剪贴板 */
-function showLoginLink(id, url){
-  var box = document.getElementById('chl-' + id);
-  if(box){
-    box.innerHTML =
-      '<div class="chlwrap">' +
-        '<div class="chlink">' + esc(url) + '</div>' +
-        '<button class="btn ghost mini" onclick="copyLoginLink(\'' + esc(id) + '\')">复制链接</button>' +
-      '</div>';
-    box.style.display = 'block';
-    window.__loginLinks = window.__loginLinks || {};
-    window.__loginLinks[id] = url;
-  }
-  copyLoginLink(id);
-  toast('授权链接已复制，去浏览器打开', 'ok');
-}
-
-function copyLoginLink(id){
-  var url = (window.__loginLinks || {})[id];
-  if(!url) return;
-  try{
-    copyText(url).then(function(){}, function(){});
-  }catch(e){}
-}
-
-async function channelLogout(id){
-  try{
-    var d = await fetch('/api/channels/logout', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id: id})
-    }).then(function(r){ return r.json(); });
-    if(d && d.ok){ toast('已退出 ' + id, 'ok'); loadChannels(); }
-    else toast('退出失败：' + (d && d.msg || '未知'), 'bad');
-  }catch(e){ toast('退出失败：' + e.message, 'bad'); }
-}
-
-async function channelCredits(id){
-  var el = document.getElementById('chc-' + id);
-  if(el) el.textContent = '查询中…';
-  try{
-    var d = await fetch('/api/channels/credits', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id: id})
-    }).then(function(r){ return r.json(); });
-    if(el) el.textContent = d && d.ok ? (d.msg || '') : ('未取到：' + ((d && d.msg) || ''));
-  }catch(e){
-    if(el) el.textContent = '查询失败：' + e.message;
-  }
-}
-
-async function toggleChannel(id, on){
-  try{
-    var d = await fetch('/api/channels/save', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id: id, enabled: on})
-    }).then(function(r){ return r.json(); });
-    if(d && d.error) throw new Error(d.error);
-    toast((on ? '已启用 ' : '已停用 ') + id, 'ok');
-    loadChannels();
-  }catch(e){
-    toast('保存失败：' + e.message, 'bad');
-  }
-}
-
-async function saveChannelKey(id){
-  var el = document.getElementById('chk-' + id);
-  if(!el) return;
-  var key = (el.value || '').trim();
-  try{
-    var d = await fetch('/api/channels/save', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id: id, key: key})
-    }).then(function(r){ return r.json(); });
-    if(d && d.error) throw new Error(d.error);
-    el.value = '';
-    toast('已保存 ' + id + ' 的 Key', 'ok');
-    loadChannels();
-  }catch(e){
-    toast('保存失败：' + e.message, 'bad');
-  }
-}
-
 function pick(which){
   /* WB-DROP-CHAT-CALLS
      页签只剩终端和密钥了，chat / calls 那两个已经删掉
@@ -2024,7 +1705,7 @@ function pick(which){
      names 里保留它们也无害 —— getElementById 找不到就跳过，
      但为了读代码的人不困惑，还是删掉。
      which 传进来不认识的值时，回落到终端。 */
-  var names={keys:'Keys',think:'Think',channels:'Channels'};
+  var names={keys:'Keys',think:'Think'};
   if(!names[which]) which='keys';
   Object.keys(names).forEach(function(k){
     var el=document.getElementById('tab'+names[k]);
@@ -2044,7 +1725,6 @@ function pick(which){
     }, 1500);
   }
   if(which==='think'){ thinkLoad(); loadThinkLevel(); }
-  if(which==='channels') loadChannels();
 }
 function autosize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,132)+'px'; }
 
@@ -2971,7 +2651,7 @@ async function thinkSave(){
     var m = location.search.match(/[?&]tab=([a-z]+)/i);
     if(m && m[1]){
       var want = m[1].toLowerCase();
-      if(want === 'keys' || want === 'think' || want === 'channels'){
+      if(want === 'keys' || want === 'think'){
         pick(want);
       }
     }
@@ -3164,22 +2844,6 @@ class Handler(BaseHTTPRequestHandler):
                 _resp2["retry_after"] = 2
             _json_send(self, 200, _resp2)
             return
-        if path == "/api/channels":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                rows = wb_channels.load(_accounts_dir())
-                _json_send(self, 200, {
-                    "channels": wb_channels.describe(rows),
-                    "enabled": len(wb_channels.enabled(rows)),
-                    "total": len(rows),
-                    # WB-CHANNELS 冷却表：429/5xx 后这家会暂时跳过
-                    "cooldowns": wb_channels.cooldowns(),
-                })
-            except Exception as exc:
-                _json_send(self, 200, {"error": str(exc)})
-            return
         if path == "/api/think-state":
             if not self._token_ok():
                 self._deny()
@@ -3249,140 +2913,6 @@ class Handler(BaseHTTPRequestHandler):
                             s["context"] = 0
             save_chat(data)
             _json_send(self, 200, {"ok": True})
-            return
-        if path == "/api/channels/begin-login":
-            # WB-BROWSER-LOGIN 起一次浏览器授权：本地监听 + 返回授权地址
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                _json_send(self, 200, wb_channels.begin_login(
-                    _accounts_dir(), str(body2.get("id") or "").strip()))
-            except Exception as exc:
-                _json_send(self, 200, {"ok": False, "msg": str(exc)})
-            return
-        if path == "/api/channels/login-state":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                _json_send(self, 200, wb_channels.login_state(
-                    _accounts_dir(), str(body2.get("id") or "").strip()))
-            except Exception as exc:
-                _json_send(self, 200, {"ok": False, "pending": False, "msg": str(exc)})
-            return
-        if path == "/api/channels/logout":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                _json_send(self, 200, wb_channels.logout(
-                    _accounts_dir(), str(body2.get("id") or "").strip()))
-            except Exception as exc:
-                _json_send(self, 200, {"ok": False, "msg": str(exc)})
-            return
-        if path == "/api/channels/credits":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                _json_send(self, 200, wb_channels.credits(
-                    _accounts_dir(), str(body2.get("id") or "").strip()))
-            except Exception as exc:
-                _json_send(self, 200, {"ok": False, "msg": str(exc)})
-            return
-        if path == "/api/channels/login-url":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                _json_send(self, 200, wb_channels.login_url(
-                    _accounts_dir(), str(body2.get("id") or "").strip()))
-            except Exception as exc:
-                _json_send(self, 200, {"ok": False, "msg": str(exc)})
-            return
-        if path == "/api/channels/login-callback":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                _json_send(self, 200, wb_channels.login_callback(
-                    _accounts_dir(),
-                    str(body2.get("id") or "").strip(),
-                    str(body2.get("code") or "").strip(),
-                    str(body2.get("state") or "").strip()))
-            except Exception as exc:
-                _json_send(self, 200, {"ok": False, "msg": str(exc)})
-            return
-        if path == "/api/channels/cookie":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                cid = str(body2.get("id") or "").strip()
-                ck = str(body2.get("cookie") or "").strip()
-                if not cid or not ck:
-                    _json_send(self, 200, {"error": "缺少 id 或 cookie"})
-                    return
-                r = wb_channels.set_cookie(_accounts_dir(), cid, ck)
-                _json_send(self, 200, {"ok": True, "id": cid,
-                                       "cookieAt": r.get("cookieAt"),
-                                       "len": len(ck)})
-            except Exception as exc:
-                _json_send(self, 200, {"error": str(exc)})
-            return
-        if path == "/api/channels/checkin":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                cid = str(body2.get("id") or "").strip()
-                _json_send(self, 200, wb_channels.checkin(_accounts_dir(), cid))
-            except Exception as exc:
-                _json_send(self, 200, {"ok": False, "error": str(exc)})
-            return
-        if path == "/api/channels/remove":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                cid = str(body2.get("id") or "").strip()
-                wb_channels.remove(_accounts_dir(), cid)
-                _json_send(self, 200, {"ok": True})
-            except Exception as exc:
-                _json_send(self, 200, {"error": str(exc)})
-            return
-        if path == "/api/channels/save":
-            if not self._token_ok():
-                self._deny()
-                return
-            try:
-                body2 = body if isinstance(body, dict) else {}
-                cid = str(body2.get("id") or "").strip()
-                if not cid:
-                    _json_send(self, 200, {"error": "缺少 id"})
-                    return
-                # WB-CHANNELS 存在就更新、不存在就新建 —— 自定义渠道靠这条路加
-                hit = wb_channels.upsert(_accounts_dir(), {
-                    "id": cid,
-                    "name": str(body2.get("name") or "").strip() or None,
-                    "baseUrl": str(body2.get("baseUrl") or "").strip() or None,
-                    "key": body2.get("key") if "key" in body2 else None,
-                    "enabled": body2.get("enabled") if "enabled" in body2 else None,
-                })
-                _json_send(self, 200, {"ok": True, "id": cid,
-                                       "enabled": bool(hit.get("enabled"))})
-            except Exception as exc:
-                _json_send(self, 200, {"error": str(exc)})
             return
         if path == "/api/think-save":
             # WB-THINK-MERGE 转发到思考调试台的保存接口
