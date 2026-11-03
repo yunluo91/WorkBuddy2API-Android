@@ -3031,6 +3031,9 @@ class MainActivity : ComponentActivity() {
             appendLine("数据目录：${PyRunner.codeDir(app).absolutePath}")
             appendLine()
             append("账号通过面板「+ 添加账号 (OAuth)」授权。")
+            appendLine()
+            appendLine()
+            append("二改作者：陨落(落山鸡高级二改王)")
         }
 
         WbInfoDialog.show(

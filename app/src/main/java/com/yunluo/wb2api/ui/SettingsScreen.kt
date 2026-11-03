@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import com.yunluo.wb2api.WbAccent
@@ -486,6 +487,9 @@ fun SettingsScreen(
                         "关于",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
+                        /* 原来是默认色，落在 surfaceVariant 半透明卡上偏黑，
+                           跟背景糊在一起看不清，这里显式给亮色 */
+                        color = WbText,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -493,7 +497,26 @@ fun SettingsScreen(
                                 "把上游模型服务包成本地网关，附带调用记录、" +
                                 "账号池、思考档位调节和可操作手机的 Agent 对话。",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = WbMuted,
+                        lineHeight = 18.sp,
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+                    HorizontalDivider(color = WbLine)
+                    Spacer(Modifier.height(10.dp))
+
+                    // ── 二改署名
+                    Text(
+                        text = "二改作者：陨落(落山鸡高级二改王)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = WbAccent,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "GitHub：yunluo91/WorkBuddy2API-Android",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = WbMuted,
                     )
                 }
             }
