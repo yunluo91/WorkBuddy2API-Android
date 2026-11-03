@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.8.0--app101-0DBD8B?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.8.0--app122-0DBD8B?style=flat-square" alt="Release"></a>
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
@@ -99,7 +99,7 @@ com.yunluo.wb2api
 
 四项统一，源码目录是 `java/com/yunluo/wb2api/`。
 
-**版本号约定**：`versionName` 形如 `1.8.0-app101`，`versionCode` **固定 100**。
+**版本号约定**：`versionName` 形如 `1.8.0-app122`，`versionCode` **固定 100**。
 这样任意历史版本之间都能互相覆盖安装，不会出现 `INSTALL_FAILED_VERSION_DOWNGRADE`。
 
 ---
@@ -108,7 +108,7 @@ com.yunluo.wb2api
 
 ### 1. 装 APK
 
-从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.8.0-app101.apk`。
+从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.8.0-app122.apk`。
 提示「未知来源」时允许即可。桌面图标叫 **WorkBuddy2API 2**。
 
 ### 2. 打开等网关起来
@@ -414,6 +414,25 @@ app/src/main/
 ---
 
 ## 十三、更新记录
+
+### 1.8.0-app122
+
+**回到干净的 WorkBuddy 网关，补三个小功能。**
+
+- 撤掉多渠道 / 账号型渠道那一整套实验（浏览器登录、Cookie 抓取、OAuth 换 token）。那部分留在分支 `channels-experiment` 和标签 `archive-channels`，主线不再包含
+- 网关显示名统一成「综合API网关」（控制台 / 思考调试台 / 用量看板）
+- 看板 → 设置 → 全局提示词：新增「导入」按钮，选 `.txt` / `.md` / `.json` 读入文本框（上限 64 KiB，超了截断）。只填不保存，改完再点「保存」
+- 看板 → 账号：**导出现在直接摊在屏幕上**，不再落文件（手机上找不到路径）。一行一个 `wbacc1:<base64url>`，下面「复制全部」一键拷走
+- 看板 → 账号：**新增「粘贴导入」**，一个输入框贴进去 → 先 dryRun 预览「新增几 / 覆盖几 / 无效几」→ 再确认导入。uid 相同覆盖、不同新增，脏行自动跳过
+- 单行约 3.6K 字符（只保留 uid / accessToken / refreshToken / realm 等必要字段），也兼容整份 JSON 粘贴
+
+```
+验证
+· 真实导出数据往返：6 条 → 编码 → 解码，uid/accessToken/refreshToken 完全一致
+· 混入脏行：成功 2、跳过 1，不整体失败
+· 网关 /accounts/import dryRun：updated 6、invalid 0
+· :app:assembleRelease BUILD SUCCESSFUL，签名 OK，versionCode 100
+```
 
 ### 1.8.0-app101
 
