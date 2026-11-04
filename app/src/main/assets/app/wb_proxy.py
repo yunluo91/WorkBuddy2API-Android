@@ -11025,6 +11025,7 @@ def runtime_settings_view():
         "pricing_refresh_minutes": wb_settings.pricing_refresh_minutes(ACCOUNTS_DIR),
         "credits_refresh_hours": wb_settings.credits_refresh_hours(ACCOUNTS_DIR),
         "section_max_height": wb_settings.section_max_height(ACCOUNTS_DIR),
+        "schedule_jitter_minutes": wb_settings.schedule_jitter_minutes(ACCOUNTS_DIR),
         "schedule": dict(wb_settings.schedule_hours(ACCOUNTS_DIR),
                          daily_chat=wb_settings.daily_chat_times(ACCOUNTS_DIR),
                          daily_chat_effective=wb_settings.daily_chat_effective_times(
@@ -21959,6 +21960,11 @@ class Handler(BaseHTTPRequestHandler):
             reply["schedule"] = dict(
                 wb_settings.schedule_hours(ACCOUNTS_DIR),
                 daily_chat=wb_settings.daily_chat_times(ACCOUNTS_DIR))
+        if "schedule_jitter_minutes" in payload:
+            # 后台排程的分钟抖动上限（0–55）。0 = 回到准点触发。
+            reply["schedule_jitter_minutes"] = (
+                wb_settings.set_schedule_jitter_minutes(
+                    ACCOUNTS_DIR, payload.get("schedule_jitter_minutes")))
         if "ui_language" in payload:
             # Instance-wide default language. The dashboard overrides this per
             # browser with localStorage; this value is the fallback when no

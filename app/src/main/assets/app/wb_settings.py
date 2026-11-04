@@ -1584,6 +1584,47 @@ def _migrate_pricing_refresh(data, accounts_dir):
     return True, minutes
 
 
+#: 后台定时任务的「分钟抖动」上限：整点排程不再固定在该小时第 0 分钟，
+#: 而是在 [0, 这个值] 里随机抽一分钟触发。0 = 关闭抖动（保持旧的准点行为）。
+SCHEDULE_JITTER_KEY = "schedule_jitter_minutes"
+SCHEDULE_JITTER_DEFAULT = 20
+SCHEDULE_JITTER_MAX = 55
+
+
+def schedule_jitter_minutes(accounts_dir):
+    """后台排程的分钟抖动上限。
+
+    为什么要有：上游对「同一出口 IP 上多个账号以完全一致的机械节拍活动」判得
+    很重（2026-10-24 有实战记录：6 个号 3 分钟内全被 11140 限制）。准点 HH:00:00
+    触发、账号顺序固定、间隔一致，就是最典型的机械节拍。
+
+    只影响**后台**排程。面板上手动点「签到」是人的动作，本身就不机械，
+    那一侧保持原来的快速执行，不抖。
+    """
+    try:
+        raw = load(accounts_dir).get(SCHEDULE_JITTER_KEY)
+        value = int(raw) if raw is not None else SCHEDULE_JITTER_DEFAULT
+    except (TypeError, ValueError):
+        value = SCHEDULE_JITTER_DEFAULT
+    if value < 0:
+        return SCHEDULE_JITTER_DEFAULT
+    return min(value, SCHEDULE_JITTER_MAX)
+
+
+def set_schedule_jitter_minutes(accounts_dir, value):
+    """持久化抖动上限；非法值回落到当前值，不抛。"""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return schedule_jitter_minutes(accounts_dir)
+    number = max(0, min(number, SCHEDULE_JITTER_MAX))
+    with _lock:
+        data = load(accounts_dir)
+        data[SCHEDULE_JITTER_KEY] = number
+        save(accounts_dir, data)
+    return number
+
+
 def pricing_refresh_minutes(accounts_dir):
     """How often the gateway refreshes the OpenRouter price history, in minutes.
 

@@ -5830,6 +5830,53 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
         </div>
       </section>
 
+      <!-- 后台定时任务：签到 / 旅行 / 保活 / 猫猫 的小时表，外加分钟抖动。
+           后端一直支持读写 settings.schedule，以前面板没入口，只能手改 JSON。 -->
+      <section>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div>
+            <h2 style="margin:0">后台定时任务 <em id="setScheduleState"></em></h2>
+            <div style="font-size:12px;color:var(--dim);margin-top:4px">
+              填小时（0–23），多个用逗号隔开，例如 <code>9,21</code>。
+              只作用于启用中的账号，跑的是免费的领取 / 保活动作。
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <button onclick="saveSchedule(this)">保存</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+          <div>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px">签到</div>
+            <input id="schedCheckin" placeholder="9,21" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--fg);font:inherit">
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px">旅行</div>
+            <input id="schedTravel" placeholder="9,21" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--fg);font:inherit">
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px">保活</div>
+            <input id="schedKeepalive" placeholder="22" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--fg);font:inherit">
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px">猫猫（每日福利）</div>
+            <input id="schedCat" placeholder="1" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--fg);font:inherit">
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px">抖动（分钟 0–55）</div>
+            <input id="schedJitter" placeholder="20" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--fg);font:inherit">
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--dim);margin-top:8px;line-height:1.7">
+          <b>抖动</b>：后台排程不再卡整点第 0 分钟，而是在这个范围内随机挑一分钟触发，
+          账号顺序也会打乱、账号间隔拉长到 20~120 秒。上游按「机械节拍」判风控，
+          这是把节奏打散的关键一条。<br>
+          <b>只影响后台定时</b>：你在面板上点「签到」属于手动触发，保持原来的快速执行
+          （账号间隔 2~5 秒），点了立刻看到结果。设 0 = 关闭抖动，回到准点触发。
+        </div>
+      </section>
+
+
       <section>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <div>
@@ -14152,15 +14199,35 @@ async function saveSchedule(btn){
     }
     patch[key] = hours;
   }
-  if(!Object.keys(patch).length){
+
+  // 抖动是单独一个标量，跟小时表一起提交
+  var body = {schedule: patch};
+  var jitEl = document.getElementById('schedJitter');
+  if(jitEl){
+    var jitRaw = String(jitEl.value || '').trim();
+    if(jitRaw !== ''){
+      var jitNum = parseInt(jitRaw, 10);
+      if(!Number.isInteger(jitNum) || jitNum < 0 || jitNum > 55){
+        toast('抖动要填 0–55 之间的分钟数', 'warn');
+        return;
+      }
+      body.schedule_jitter_minutes = jitNum;
+    }
+  }
+  if(!Object.keys(patch).length && body.schedule_jitter_minutes === undefined){
     toast('什么都没填，没改', 'warn');
     return;
   }
+
   if(btn){ btn.disabled = true; btn.textContent = '保存中...'; }
   try{
-    var r = await postJSON('/settings', {schedule: patch});
+    // 保存接口是 /settings/save（不是 /settings，那个是 GET 用的）
+    var r = await postJSON('/settings/save', body);
     var got = (r && r.schedule) || {};
-    fillSchedule({schedule: got});
+    fillSchedule({
+      schedule: got,
+      schedule_jitter_minutes: (r && r.schedule_jitter_minutes),
+    });
     var st = document.getElementById('setScheduleState');
     if(st){ st.textContent = '(已保存)'; st.style.color = 'var(--accent2)'; }
     toast('定时任务已保存', 'ok');

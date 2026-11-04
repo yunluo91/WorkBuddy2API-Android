@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.10.9--app130-0DBD8B?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.10.9--app131-0DBD8B?style=flat-square" alt="Release"></a>
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
@@ -101,7 +101,7 @@ com.yunluo.wb2api
 
 四项统一，源码目录是 `java/com/yunluo/wb2api/`。
 
-**版本号约定**：`versionName` 形如 `1.10.9-app130`（跟内嵌网关版本走，后面是 App 构建号），`versionCode` **固定 100**。
+**版本号约定**：`versionName` 形如 `1.10.9-app131`（跟内嵌网关版本走，后面是 App 构建号），`versionCode` **固定 100**。
 这样任意历史版本之间都能互相覆盖安装，不会出现 `INSTALL_FAILED_VERSION_DOWNGRADE`。
 
 ---
@@ -110,7 +110,7 @@ com.yunluo.wb2api
 
 ### 1. 装 APK
 
-从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.10.9-app130.apk`。
+从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.10.9-app131.apk`。
 提示「未知来源」时允许即可。桌面图标叫 **WorkBuddy2API 2**。
 
 ### 2. 打开等网关起来
@@ -463,6 +463,32 @@ app/src/main/
 ---
 
 ## 十三、更新记录
+
+### 1.10.9-app131
+
+**后台定时任务加「防机械节拍」抖动，面板上补上定时任务设置界面。**
+
+上游对「同一出口 IP 上多个账号以完全一致的机械节拍活动」判得很重（有实战记录：
+6 个号 3 分钟内全被 11140 限制）。以前的排程是准点 `HH:00:00` 触发、账号顺序固定、
+间隔 2~5 秒 —— 就是最典型的机械节拍。
+
+- **后台排程抖动**：不再卡整点第 0 分钟，而是在该小时内随机挑一分钟触发
+  （范围 0–N 分钟，N 可配，默认 20，设 0 = 关闭）
+- **后台打乱账号顺序**：池子顺序天天一样本身也是可识别的节拍
+- **后台账号间隔拉到 20~120 秒随机**（原来是 2~5 秒，几乎同时）
+- **只影响后台定时**：面板上手动点「签到」保持原来的快速执行（间隔 2~5 秒），
+  点了立刻看到结果 —— 人点的动作本身不机械
+- **看板 → 设置 → 后台定时任务**：签到 / 旅行 / 保活 / 猫猫 四个小时表 + 抖动，
+  可视化编辑。后端一直支持读写 `settings.schedule`，以前只能手改 JSON
+
+```
+验证
+· 设置读写：设 35 → 35；越界 999 → 夹到 55；非法 abc → 保持原值；
+  非法小时 25 → HTTP 400
+· 抖动逻辑：span=0 恒为 0（旧行为）；span=20/55 同一小时内稳定、跨小时随机
+· 39 个 .py 语法全过，dashboard JS node --check 通过
+· ：app:assembleRelease BUILD SUCCESSFUL，versionCode 100
+```
 
 ### 1.10.9-app130
 

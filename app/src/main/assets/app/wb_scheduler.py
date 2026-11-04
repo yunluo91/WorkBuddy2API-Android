@@ -207,14 +207,19 @@ class Scheduler:
                     except Exception as exc:
                         self.log(f"网页活跃排程执行异常: {exc}")
                     time.sleep(35)
-                # 到达设定的整点前 1 分钟内触发
-                if cur_min == 0 and cur_hour in self.all_hours:
-                    reason = f"整点排程命中 ({cur_hour}:00)"
-                    try:
-                        self._execute_cycle(reason)
-                    except Exception as exc:
-                        self.log(f"排程执行异常: {exc}")
-                    time.sleep(65) # 避开当前这一分钟重复触发
+                # 后台排程触发点：不再固定在整点第 0 分钟。
+                # 上游按「机械节拍」判风控，准点 HH:00:00 是最容易识别的特征之一，
+                # 所以每小时进到这一小时时先随机抽一个目标分钟，抽到哪分钟就哪分钟跑。
+                # 抖动配成 0 时目标分钟恒为 0，等价于旧行为。
+                if cur_hour in self.all_hours:
+                    target = self._hour_target_minute(cur_hour)
+                    if cur_min == target:
+                        reason = "整点排程命中 (%d:%02d)" % (cur_hour, target)
+                        try:
+                            self._execute_cycle(reason, background=True)
+                        except Exception as exc:
+                            self.log(f"排程执行异常: {exc}")
+                        time.sleep(65)
             # 模型额度窗口探针：不受 enabled 影响。窗口是按首次请求起算的，
             # 到点没人请求就不会开始新一轮，这件事跟签到/保活开关无关。
             self._run_window_probes()
@@ -375,6 +380,28 @@ class Scheduler:
             t_struct = time.struct_time((now_tom.tm_year, now_tom.tm_mon, now_tom.tm_mday, first_h, 0, 0, 0, 0, -1))
         self.next_run_time = time.strftime("%Y-%m-%d %H:%M:%S", t_struct)
 
+    def _hour_target_minute(self, hour):
+        """这一小时里，后台排程该在第几分钟跑。
+
+        每小时第一次被问到时随机抽一次并记住，之后这一小时内都返回同一个值
+        —— 否则每 30 秒的轮询会不停换目标分钟，永远命中不了。
+        抖动为 0 时恒为 0，行为与旧版一致。
+        """
+        key = time.strftime("%Y-%m-%d %H", time.localtime())
+        if getattr(self, "_hour_target_key", None) != key:
+            self._hour_target_key = key
+            try:
+                import wb_settings
+                span = wb_settings.schedule_jitter_minutes(
+                    getattr(self.pool, "dir", "") or "")
+            except Exception:
+                span = 0
+            self._hour_target_minute_value = random.randint(0, span) if span > 0 else 0
+            if span > 0:
+                self.log("后台排程抖动：本小时第 %d 分钟执行（范围 0-%d）"
+                         % (self._hour_target_minute_value, span))
+        return getattr(self, "_hour_target_minute_value", 0)
+
     def trigger_now(self):
         """手动立即触发一次调度检查。"""
         if self._run_lock.locked():
@@ -428,10 +455,21 @@ class Scheduler:
         run_daily_chat = (force or daily_chat_only or catchup
                           or (not self.daily_chat_times and run_checkin))
 
+        # 后台排程打乱账号顺序：池子顺序天天一样本身也是可识别的节拍。
+        # 手动触发（面板点签到）保持原顺序 —— 人点的时候要看得懂谁在跑。
+        if background and len(accounts) > 1:
+            accounts = random.sample(accounts, len(accounts))
+
         for idx, acc in enumerate(accounts):
             if idx > 0:
-                # 账号间随机错峰防并发风控（2~5秒浮动延时，issue #394）
-                time.sleep(random.uniform(2.0, 5.0))
+                # 账号间隔：
+                #   后台 → 20~120 秒随机。慢是代价，但这是让一组账号看起来像
+                #          几个人分别操作的关键；后台任务慢几分钟无所谓。
+                #   手动 → 保持 2~5 秒。点了要立刻看到结果，人点的动作不机械。
+                if background:
+                    time.sleep(random.uniform(20.0, 120.0))
+                else:
+                    time.sleep(random.uniform(2.0, 5.0))
             uid8 = acc.uid[:8] if acc.uid else "?"
             # 上游账号级风控限制（403 / code 11140）中的账号一律跳过：无人值守
             # 的巡检/打卡再去「试探」一次，只会让同一台设备上的其他账号连坐。
