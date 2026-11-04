@@ -507,7 +507,7 @@ fun SettingsScreen(
 
                     // ── 二改署名
                     Text(
-                        text = "二改作者：陨落(落山鸡高级二改王)",
+                        text = "作者：陨落(落山鸡高级二改王)",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
                         color = WbAccent,
