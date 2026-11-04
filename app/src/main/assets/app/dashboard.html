@@ -80,9 +80,22 @@
   vertical-align:middle;
   opacity:.85;
 }
+/* 窄屏专用：从标题行里拿出来，单独占一行最下面，
+   不再跟页签抢那一行宽度（原来窄屏直接 display:none，手机上永远看不见） */
+.wb-signature-line{
+  display:none;
+  width:100%;
+  order:99;
+  font-size:10.5px;
+  font-weight:400;
+  letter-spacing:.2px;
+  color:var(--dim);
+  opacity:.8;
+  margin-top:2px;
+}
 @media (max-width:640px){
-  /* 窄屏那一行塞不下，署名会挤掉页签 */
   .wb-signature{display:none}
+  .wb-signature-line{display:block}
 }
 </style>
 <script>
@@ -4377,7 +4390,9 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
          窄屏（<640px）隐藏 —— 那一行本来就很挤，
          标题和页签要优先保住。 -->
     <h1><span class="dot" id="statusDot"></span>WorkBuddy 网关<span
-      class="wb-signature" title="二改作者">陨落(落山鸡高级二改王)</span></h1>
+      class="wb-signature" title="作者">陨落(落山鸡高级二改王)</span></h1>
+    <!-- 窄屏单独一行显示作者，宽屏隐藏（宽屏用上面那个内联的） -->
+    <div class="wb-signature-line">作者：陨落(落山鸡高级二改王)</div>
     <nav class="main-nav">
       <button class="main-nav-btn active" id="btnNavGateway" onclick="switchMainTab('gateway')">
         <span id="navGatewayLabel">网关</span>
