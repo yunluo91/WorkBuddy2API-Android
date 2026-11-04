@@ -26,7 +26,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 100
-        versionName "1.8.0-app128-hub1109"
+        versionName "1.8.0-app129"
 
         ndk {
             // 只打 arm64：手机基本都是 arm64，包体小一半

@@ -3018,7 +3018,9 @@ class MainActivity : ComponentActivity() {
         val txt = buildString {
             appendLine("版本：${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
             appendLine("内嵌 Python：Chaquopy 16.1.0 / CPython 3.11")
-            appendLine("网关上游：workbuddy2api-hub v1.8.0 (MIT)")
+            // 网关上游版本：内嵌的是 hub 1.10.9（见 MERGE-NOTES.md）。
+            // 每次合并上游记得同步这一行，否则「关于」会骗人。
+            appendLine("网关上游：workbuddy2api-hub v1.10.9 (MIT)")
             appendLine()
             appendLine("面板：${PyRunner.baseUrl()}")
             appendLine("API：${PyRunner.baseUrl()}v1")

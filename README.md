@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.8.0--app126-0DBD8B?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.8.0--app129-0DBD8B?style=flat-square" alt="Release"></a>
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
@@ -99,7 +99,7 @@ com.yunluo.wb2api
 
 四项统一，源码目录是 `java/com/yunluo/wb2api/`。
 
-**版本号约定**：`versionName` 形如 `1.8.0-app126`，`versionCode` **固定 100**。
+**版本号约定**：`versionName` 形如 `1.8.0-app129`，`versionCode` **固定 100**。
 这样任意历史版本之间都能互相覆盖安装，不会出现 `INSTALL_FAILED_VERSION_DOWNGRADE`。
 
 ---
@@ -108,7 +108,7 @@ com.yunluo.wb2api
 
 ### 1. 装 APK
 
-从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.8.0-app126.apk`。
+从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.8.0-app129.apk`。
 提示「未知来源」时允许即可。桌面图标叫 **WorkBuddy2API 2**。
 
 ### 2. 打开等网关起来
@@ -414,6 +414,45 @@ app/src/main/
 ---
 
 ## 十三、更新记录
+
+### 1.8.0-app129
+
+**网关上游升到 1.10.9，自研改动一处没丢。**
+
+三方对比合并（base = 上游 v1.8.0，theirs = 上游 v1.10.9，ours = 本仓库）：
+
+- 我们没动过的 27 个 `.py` 直接换新
+- 带进上游新增 6 个模块：`wb_codearts` / `wb_codearts_crypto` /
+  `wb_media` / `wb_media_client` / `wb_media_tasks` / `wb_usage_io`
+- `pricing.json` 换上游新价目
+- `wb_proxy.py` 5 处冲突全解（上游给 RateLimited 加了 `reset_at=` 参数）
+- `wb_accounts.py` 合并把 `repair_realm` 放进了 `class Account`，
+  手工移回 `class AccountPool`（沙箱跑出来的真 bug）
+- `dashboard.html` / `wb_console.py` / `wb_boot.py` **保我们的**
+  （我们看板用到的 48 个后端路径在 1.10.9 里一个不缺，旧看板配新后端安全）
+
+拿到的东西：
+
+- CodeArts 原生第三出口（PKCE + DPoP + 续期轮转 + 签到）
+- 生图 / 生视频（`/v1/images/*`、`/v1/videos`，默认关闭）
+  - `kling-video-v3` 720P/1080P/4K，3–15 秒，约 26 积分/秒
+  - `minimax-video-h3` 768P/2K，4–15 秒，约 14.29 积分/秒
+  - `hunyuan-image-alpha` / `-edit` 约 6 积分/张
+  - 新增 `GET /v1/media/models`：开关关着也能查清单和实测单价
+- 账号健康：401 真失效判定、11140 风控避让、配置并发锁、UID 注入防护
+- 日志轮转日限校验、`usage.jsonl` 原子追加
+- 国际版 `deepseek-v4.1-flash` 原生免费通道（0 积分）
+
+```
+验证
+· 39 个 .py 语法全过
+· 沙箱真跑 /health ok=true（带 codearts 段）、/v1/models 200（19 个模型）、
+  媒体路由默认 404（符合预期）、启动日志零异常
+· 控制台与调试台引用的 8 个跨模块符号在 1.10.9 里全都在
+· 「关于」里的上游版本改为 v1.10.9（原来写死 v1.8.0）
+```
+
+合并细节见 [MERGE-NOTES.md](MERGE-NOTES.md)。
 
 ### 1.8.0-app126
 
