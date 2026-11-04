@@ -526,7 +526,7 @@ def build_identity_headers(product, realm, uid, token,
         compat = desktop_chat_compat_enabled()
         headers.update(trace_headers(with_parent=compat))
         if compat:
-            # Desktop profile reported by workbuddy2api-panel's headers.go
+            # Desktop profile reported by the upstream header set
             # (CN 5.8.3 / intl 5.8.4); shared SDK values remain configurable.
             # Not a claim that Python's TLS stack matches the official client.
             sdk_headers = cli_stainless_headers()

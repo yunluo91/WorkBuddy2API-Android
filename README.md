@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.10.9--app131-0DBD8B?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.10.9--app132-0DBD8B?style=flat-square" alt="Release"></a>
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
@@ -101,7 +101,7 @@ com.yunluo.wb2api
 
 四项统一，源码目录是 `java/com/yunluo/wb2api/`。
 
-**版本号约定**：`versionName` 形如 `1.10.9-app131`（跟内嵌网关版本走，后面是 App 构建号），`versionCode` **固定 100**。
+**版本号约定**：`versionName` 形如 `1.10.9-app132`（跟内嵌网关版本走，后面是 App 构建号），`versionCode` **固定 100**。
 这样任意历史版本之间都能互相覆盖安装，不会出现 `INSTALL_FAILED_VERSION_DOWNGRADE`。
 
 ---
@@ -110,7 +110,7 @@ com.yunluo.wb2api
 
 ### 1. 装 APK
 
-从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.10.9-app131.apk`。
+从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.10.9-app132.apk`。
 提示「未知来源」时允许即可。桌面图标叫 **WorkBuddy2API 2**。
 
 ### 2. 打开等网关起来
@@ -463,6 +463,13 @@ app/src/main/
 ---
 
 ## 十三、更新记录
+
+### 1.10.9-app132
+
+**清理：注释里不留第三方项目的名字。**
+
+- 三处注释里提到的外部项目名改写成中性描述（技术含义不变）
+- 无功能改动，行为与 app131 完全一致
 
 ### 1.10.9-app131
 

@@ -93,7 +93,7 @@ def keepalive_due(expires_at, now=None, lead=None):
 class Scheduler:
     def __init__(self, pool):
         self.pool = pool
-        # 默认排程对齐 Sliverkiss/workbuddy2api (CST 24小时制)；实际值从
+        # 默认排程按 CST 24 小时制；实际值从
         # settings.json 的 schedule 段读取，缺省 / 非法回落这些默认值。
         self.checkin_hours = [9, 21]     # 每日 09:00、21:00 签到
         self.travel_hours = [9, 21]      # 每日 09:00 派出、21:00 领奖闭环
