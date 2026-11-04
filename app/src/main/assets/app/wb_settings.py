@@ -244,10 +244,44 @@ def settings_path(accounts_dir):
     return os.path.join(accounts_dir, "settings.json")
 
 
+class PanelPasswordCryptoError(RuntimeError):
+    """Raised when hashlib.pbkdf2_hmac is missing or fails due to interpreter environment issues."""
+    pass
+
+
+def check_pbkdf2_available():
+    """Verify hashlib.pbkdf2_hmac is functional in this interpreter.
+
+    Returns (ok: bool, reason: str).
+    """
+    if not hasattr(hashlib, "pbkdf2_hmac"):
+        return False, "module 'hashlib' has no attribute 'pbkdf2_hmac'"
+    try:
+        hashlib.pbkdf2_hmac("sha256", b"smoke", b"salt", 1)
+        return True, ""
+    except Exception as exc:
+        return False, str(exc)
+
+
 def _digest(password, salt_hex, rounds=PBKDF2_ROUNDS):
-    return hashlib.pbkdf2_hmac(
-        "sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), rounds
-    ).hex()
+    if not hasattr(hashlib, "pbkdf2_hmac"):
+        raise PanelPasswordCryptoError(
+            "当前 Python 解释器缺少 hashlib.pbkdf2_hmac 支持，无法进行密码哈希计算。"
+            "若使用 Windows 便携版 Python，请检查系统安全策略（如 Smart App Control）是否拦截了 DLLs/_hashlib.pyd。"
+        )
+    try:
+        salt_bytes = bytes.fromhex(salt_hex)
+    except (ValueError, TypeError) as exc:
+        raise ValueError(f"invalid password salt hex: {exc}") from exc
+    try:
+        return hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), salt_bytes, rounds
+        ).hex()
+    except (AttributeError, ImportError, ModuleNotFoundError, NotImplementedError, RuntimeError, OSError) as exc:
+        raise PanelPasswordCryptoError(
+            f"当前 Python 解释器计算 hashlib.pbkdf2_hmac 失败: {exc}。"
+            "若使用 Windows 便携版 Python，请检查系统安全策略（如 Smart App Control）是否拦截了 DLLs/_hashlib.pyd。"
+        ) from exc
 
 
 # settings.json 的解析结果按 (path, mtime, size) 缓存：请求热路径上它被读约 10
@@ -458,7 +492,9 @@ def verify_panel_password(accounts_dir, password):
     rounds = int(data.get("panel_password_rounds") or PBKDF2_ROUNDS)
     try:
         given = _digest(password, salt, rounds)
-    except Exception:
+    except PanelPasswordCryptoError:
+        raise
+    except ValueError:
         return False
     return hmac.compare_digest(given, stored)
 
@@ -520,7 +556,23 @@ def ensure_launcher_key(accounts_dir):
 # Each key can be bound to one upstream realm, so several clients can hit
 # different exits at the same time instead of sharing the global switch.
 
-REALMS = ("", "intl", "cn")
+REALMS = ("", "intl", "cn", "codearts")
+
+
+def codearts_config(accounts_dir):
+    """CodeArts 配置的薄包装，避免 wb_settings ↔ wb_codearts 的模块级循环。"""
+    import wb_codearts
+    return wb_codearts.load_config(accounts_dir)
+
+
+def set_codearts_config(accounts_dir, patch):
+    import wb_codearts
+    return wb_codearts.save_config(accounts_dir, patch)
+
+
+def codearts_configured(accounts_dir):
+    import wb_codearts
+    return wb_codearts.configured(accounts_dir)
 
 
 def _clean_model_patterns(value):
@@ -1696,6 +1748,21 @@ def set_upstream_config(accounts_dir, cfg):
     return clean
 
 
+def max_payload_mb(accounts_dir):
+    value = load(accounts_dir).get("max_payload_mb")
+    return value if isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 256 else None
+
+
+def set_max_payload_mb(accounts_dir, value):
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 256:
+        raise ValueError("max_payload_mb must be an integer between 1 and 256")
+    with _lock:
+        data = load(accounts_dir)
+        data["max_payload_mb"] = value
+        save(accounts_dir, data)
+    return value
+
+
 USAGE_DEFAULTS = {
     "hour_keep_hours": 48,
     "day_keep_days": 32,
@@ -1743,6 +1810,132 @@ def set_usage_config(accounts_dir, patch):
     with _lock:
         data = load(accounts_dir)
         data["usage"] = deep_merge(data.get("usage"), clean)
+        save(accounts_dir, data)
+    return clean
+
+# ---------------------------------------------------------------- 媒体能力（生图 / 生视频）
+#
+# **默认全关**：这是本仓库里唯一一项「模型自己决定花钱」的能力——一次生图约 5.7
+# 积分、一条 5 秒视频 57~129 积分，直接扣账号积分而不经 token 计费，宿主也没有
+# 「调用前先确认」的机制。所以升级不能附赠它，必须是操作者显式打开的。
+#
+# 每一项都有上限（与 USAGE_LIMITS 同一套理由）：面板输入框贴错一位数就会把
+# 「每分钟 6 次」变成「每分钟 600 次」，那等于关掉了这道闸。
+
+MEDIA_DEFAULTS = {
+    # 总闸。false 时媒体路由**根本不存在**（404），不是 403——少一个探测面。
+    "enabled": False,
+    # 媒体只走哪个区。默认国内版：已取证的媒体目录在 cn；intl 有 hy-image-3.5
+    # 与 kling-video-v3，但没有 intl 账号时选它只会得到「该区没有可用账号」。
+    "realm": "cn",
+    # 出站身份：desktop（跟账号自身）或 cli。P0 取证之后把结论落到这里，
+    # 换默认值不需要改代码路径。
+    "identity": "desktop",
+    # 每个 API Key 每分钟最多几次生图。6 次/分钟 × 5.71 积分 ≈ 34 积分/分钟。
+    "image_max_per_minute": 6,
+    # 视频时长上限（秒）。与目录的 maxSeconds 取小值。
+    "video_max_seconds": 15,
+    # 每个 API Key 每天最多在媒体上花多少积分；0 = 不限。
+    # 这是第二道闸门：key 级防「一个客户端把整个池子烧光」，账号级的
+    # daily_credit_limit 防「某个账号被烧穿」。两层都过才派发。
+    # **默认不限**（0）。设一个有限的默认值等于替用户决定花多少，而失败模式很难看：
+    # 跑到一半撞额度，客户端只看到 402，还得自己猜是不是该改配置。
+    "daily_credits_per_key": 0,
+    # 同时跑几条生视频。超过就排队（不提交上游、不扣费），等有任务结束再自动提交。
+    # 3 是"三条并行、各占一个账号"的默认：再多会放大同一账号的风控面，
+    # 而账号数不足时排队比硬塞更划算。
+    "video_concurrency": 3,
+}
+
+MEDIA_LIMITS = {
+    "image_max_per_minute": 60,
+    "video_max_seconds": 60,
+    "daily_credits_per_key": 100000,
+    # 上限压在媒体并发槽（4）以内：再大也没有东西去跑。
+    "video_concurrency": 8,
+}
+
+#: 每个数值项的合法下界。生图次数与视频时长至少 1 秒/次；每日额度允许 0（不限）。
+MEDIA_MINIMUMS = {
+    "image_max_per_minute": 1,
+    "video_max_seconds": 1,
+    "daily_credits_per_key": 0,
+    "video_concurrency": 1,
+}
+
+MEDIA_REALMS = ("cn", "intl")
+MEDIA_IDENTITIES = ("desktop", "cli")
+
+
+def validate_media_patch(raw):
+    """严格校验面板提交的媒体设置补丁。
+
+    未知键**报错**而不是忽略：静默忽略会让前端拼错字段名时显示「保存成功」、
+    而实际什么都没存——那是最难查的一类问题。
+    """
+    out = {}
+    for key, value in (raw or {}).items():
+        if key not in MEDIA_DEFAULTS:
+            raise ValueError("unknown media setting %r" % key)
+        if key == "enabled":
+            if not isinstance(value, bool):
+                raise ValueError("enabled must be true or false")
+            out[key] = value
+            continue
+        if key == "realm":
+            if value not in MEDIA_REALMS:
+                raise ValueError("realm must be one of %s" % ", ".join(MEDIA_REALMS))
+            out[key] = value
+            continue
+        if key == "identity":
+            if value not in MEDIA_IDENTITIES:
+                raise ValueError("identity must be one of %s" % ", ".join(MEDIA_IDENTITIES))
+            out[key] = value
+            continue
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError("%s must be a whole number" % key)
+        if value < MEDIA_MINIMUMS[key]:
+            raise ValueError("%s cannot be less than %d" % (key, MEDIA_MINIMUMS[key]))
+        if value > MEDIA_LIMITS[key]:
+            raise ValueError("%s cannot be more than %d" % (key, MEDIA_LIMITS[key]))
+        out[key] = value
+    return out
+
+
+def media_config(accounts_dir, environ=None):
+    """媒体设置（带默认值，坏值回落到默认值而不是抛）。
+
+    `WB_MEDIA_ENABLED=1` 可临时打开总闸，供 CI 与冒烟用。**只有总闸**吃这个环境
+    变量：限额要是能被环境变量改大，「谁把它调大了」就变成不可查的问题。
+    """
+    stored = load(accounts_dir).get("media")
+    stored = stored if isinstance(stored, dict) else {}
+    out = {}
+    for key, default in MEDIA_DEFAULTS.items():
+        value = stored.get(key, default)
+        if key == "enabled":
+            out[key] = value if isinstance(value, bool) else default
+        elif key == "realm":
+            out[key] = value if value in MEDIA_REALMS else default
+        elif key == "identity":
+            out[key] = value if value in MEDIA_IDENTITIES else default
+        elif (isinstance(value, bool) or not isinstance(value, int)
+              or value < MEDIA_MINIMUMS[key] or value > MEDIA_LIMITS[key]):
+            out[key] = default
+        else:
+            out[key] = value
+    environ = os.environ if environ is None else environ
+    if str(environ.get("WB_MEDIA_ENABLED") or "").strip() == "1":
+        out["enabled"] = True
+    return out
+
+
+def set_media_config(accounts_dir, patch):
+    """持久化一份校验过的媒体设置补丁。"""
+    clean = validate_media_patch(patch)
+    with _lock:
+        data = load(accounts_dir)
+        data["media"] = deep_merge(data.get("media"), clean)
         save(accounts_dir, data)
     return clean
 
@@ -1828,6 +2021,14 @@ def set_enable_anthropic_messages(accounts_dir, enabled):
         data["enable_anthropic_messages"] = enabled
         save(accounts_dir, data)
     return enabled
+
+
+def deepseek_flash_force_sg(accounts_dir):
+    return False
+
+
+def set_deepseek_flash_force_sg(accounts_dir, enabled):
+    return False
 
 
 def free_model_credit_fallback(accounts_dir):
@@ -3000,6 +3201,29 @@ def set_quota_scan_models(accounts_dir, models):
 _SLOT_ID_RE = re.compile(r"^slot-(\d+)$")
 
 
+def normalize_proxy_url(url):
+    """Normalize user/vendor proxy input into standard http://[user:pass@]host:port.
+
+    Supports:
+      - host:port:user:pass or http://host:port:user:pass (vendor format)
+      - user:pass@host:port (adds missing http:// scheme)
+      - standard http://user:pass@host:port or http://host:port
+    """
+    raw = str(url or "").strip()
+    if not raw:
+        return ""
+    scheme = "http"
+    if "://" in raw:
+        s, _, rest = raw.partition("://")
+        scheme = s.strip().lower() or "http"
+        raw = rest.strip()
+    parts = raw.split(":")
+    if len(parts) == 4 and parts[1].isdigit():
+        host, port, user, password = parts[0], parts[1], parts[2], parts[3]
+        return "%s://%s:%s@%s:%s" % (scheme, user, password, host, port)
+    return "%s://%s" % (scheme, raw)
+
+
 def _clean_slot_entry(entry, fallback_id=None):
     """Normalize one stored slot; returns None when unusable.
 
@@ -3010,7 +3234,7 @@ def _clean_slot_entry(entry, fallback_id=None):
     """
     if not isinstance(entry, dict):
         return None
-    url = str(entry.get("url") or "").strip()
+    url = normalize_proxy_url(entry.get("url"))
     if not url:
         return None
     slot_id = str(entry.get("id") or "").strip()
