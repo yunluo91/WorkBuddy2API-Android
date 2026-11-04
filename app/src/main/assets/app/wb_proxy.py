@@ -14303,10 +14303,24 @@ def build_upstream_body(payload):
     # when it left the field out, and never for a request that opted out.
     if str(model).lower().startswith("deepseek"):
         thinking = body.get("thinking")
-        opted_out = isinstance(thinking, dict) and \
-            str(thinking.get("type") or "").strip().lower() == "disabled"
         effort = body.get("reasoning_effort") or body.get("reasoningEffort")
-        if not opted_out and str(effort or "").strip().lower() != "none":
+        # 「关思考」有两条表达路径，两条都得认：
+        #   ① thinking.type = disabled（结构化字段）
+        #   ② reasoning_effort = off / none / disabled（档位字段）
+        # 只判 ② 里的 none 是不够的：off 传到上游会被就近抬成最弱正档，
+        # 表现就是「说要关，实际开着最弱一档」。所以判定成「关」之后
+        # 先把档位字段清掉，再把 thinking 明确置 disabled，让上游看到明确的关。
+        _EFFORT_OFF = ("off", "none", "disabled", "false", "0")
+        _effort_text = str(effort or "").strip().lower()
+        _type_off = isinstance(thinking, dict) and \
+            str(thinking.get("type") or "").strip().lower() == "disabled"
+        opted_out = _type_off or _effort_text in _EFFORT_OFF
+        if opted_out:
+            body.pop("reasoning_effort", None)
+            body.pop("reasoningEffort", None)
+            body["thinking"] = {"type": "disabled"}
+            effort = None
+        if not opted_out:
             if "thinking" not in body:
                 body["thinking"] = {"type": "enabled"}
             if not effort:

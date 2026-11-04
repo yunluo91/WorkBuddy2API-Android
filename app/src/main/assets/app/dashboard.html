@@ -12984,6 +12984,8 @@ async function loadSettings(showToast){
         dailyWebRandomPromptState.style.color = dailyWebRandomPrompt
           ? 'var(--accent2)' : 'var(--dim)';
       }
+      // 后台定时任务的四个小时表（后端一直支持读写，这里补上展示与保存）
+      fillSchedule(data);
       const promptCfg = (data.prompt && typeof data.prompt === 'object') ? data.prompt : {};
       const promptMode = ['passthrough', 'append', 'custom'].indexOf(promptCfg.mode) >= 0
         ? promptCfg.mode : 'passthrough';
@@ -14107,6 +14109,66 @@ function importGlobalPromptFile(input){
   // 按纯文本读；有些提示词文件是 .json，也当文本处理（保存的本来就是文本）
   reader.readAsText(file, 'utf-8');
   input.value = '';        // 允许再次选同一个文件
+}
+
+/**
+ * 后台定时任务：把网关读到的 schedule 填进输入框。
+ * 键是 checkin / travel / keepalive / cat，值是小时数组（0–23）。
+ */
+function fillSchedule(cfg){
+  var sched = (cfg && cfg.schedule) || null;
+  if(!sched) return;
+  var put = function(id, hours){
+    var el = document.getElementById(id);
+    if(el && Array.isArray(hours)) el.value = hours.join(',');
+  };
+  put('schedCheckin', sched.checkin);
+  put('schedTravel', sched.travel);
+  put('schedKeepalive', sched.keepalive);
+  put('schedCat', sched.cat);
+}
+
+/** 保存定时任务的小时表。某项留空表示不改它。 */
+async function saveSchedule(btn){
+  var fields = [
+    ['schedCheckin', 'checkin'],
+    ['schedTravel', 'travel'],
+    ['schedKeepalive', 'keepalive'],
+    ['schedCat', 'cat'],
+  ];
+  var patch = {};
+  for(var i = 0; i < fields.length; i++){
+    var id = fields[i][0], key = fields[i][1];
+    var el = document.getElementById(id);
+    if(!el) continue;
+    var raw = String(el.value || '').trim();
+    if(!raw) continue;
+    var hours = raw.split(/[,，\s]+/)
+      .map(function(x){ return parseInt(x, 10); })
+      .filter(function(x){ return Number.isInteger(x) && x >= 0 && x <= 23; });
+    if(!hours.length){
+      toast('「' + key + '」里没有合法的小时（0–23）', 'warn');
+      return;
+    }
+    patch[key] = hours;
+  }
+  if(!Object.keys(patch).length){
+    toast('什么都没填，没改', 'warn');
+    return;
+  }
+  if(btn){ btn.disabled = true; btn.textContent = '保存中...'; }
+  try{
+    var r = await postJSON('/settings', {schedule: patch});
+    var got = (r && r.schedule) || {};
+    fillSchedule({schedule: got});
+    var st = document.getElementById('setScheduleState');
+    if(st){ st.textContent = '(已保存)'; st.style.color = 'var(--accent2)'; }
+    toast('定时任务已保存', 'ok');
+  }catch(e){
+    toast('保存失败: ' + e.message, 'err');
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '保存'; }
+  }
 }
 
 async function saveGlobalPrompt(btn){

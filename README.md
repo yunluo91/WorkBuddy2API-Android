@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.10.9--app129-0DBD8B?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.10.9--app130-0DBD8B?style=flat-square" alt="Release"></a>
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
@@ -21,6 +21,8 @@
   <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><b>⬇ 下载 APK</b></a>
   　·　
   <a href="使用说明.md">使用说明</a>
+  　·　
+  <a href="PITFALLS.md">踩坑记录</a>
   　·　
   <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases">所有版本</a>
 </p>
@@ -99,7 +101,7 @@ com.yunluo.wb2api
 
 四项统一，源码目录是 `java/com/yunluo/wb2api/`。
 
-**版本号约定**：`versionName` 形如 `1.10.9-app129`（跟内嵌网关版本走，后面是 App 构建号），`versionCode` **固定 100**。
+**版本号约定**：`versionName` 形如 `1.10.9-app130`（跟内嵌网关版本走，后面是 App 构建号），`versionCode` **固定 100**。
 这样任意历史版本之间都能互相覆盖安装，不会出现 `INSTALL_FAILED_VERSION_DOWNGRADE`。
 
 ---
@@ -108,7 +110,7 @@ com.yunluo.wb2api
 
 ### 1. 装 APK
 
-从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.10.9-app129.apk`。
+从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.10.9-app130.apk`。
 提示「未知来源」时允许即可。桌面图标叫 **WorkBuddy2API 2**。
 
 ### 2. 打开等网关起来
@@ -116,27 +118,50 @@ com.yunluo.wb2api
 首次启动要解压 Python 环境，约 10–30 秒，屏幕上有进度。
 底部「控制台」能点开、看板能出页面，就算起来了。
 
-### 3. 设置 → 后台保活（重要）
+### 3. 后台保活（重要，别跳过）
 
-| 项 | 要什么状态 | 没做的后果 |
+**这一步不做，网关会在你切出去几分钟后掉线。**
+
+App 里点「后台保活」，按提示授权两项：
+
+```
+① 电池优化豁免     → 系统设置里允许 App 后台运行
+② 通知权限         → 前台服务要有一条常驻通知，没有通知系统会杀掉服务
+```
+
+**国产 ROM 还要另外放行三处**（各家叫法不同）：
+
+```
+· 自启动 / 后台自启
+· 省电策略改成「无限制 / 不优化」
+· 任务列表里把这个 App 下拉锁定（别让「一键清理」把它清掉）
+```
+
+**这些都是系统管的，App 只能提示，改不了。**
+
+> 怎么判断有没有设置成功：锁屏放 10 分钟，解锁后看通知栏那条还在不在、
+> 状态是不是「运行中」。掉线的话通知会变成「未启动」或显示自救次数。
+
+## 手机上怎么保证不掉线
+
+系统随时可能在内存紧张时杀后台，所以这里叠了几层，任何一层生效都能把网关拉回来：
+
+| 层 | 做法 | 说明 |
 |---|---|---|
-| 电池优化豁免 | 已开启 | 系统省电会杀进程，掉后台最常见的原因 |
-| 通知权限 | 允许 | 前台服务被降级，更容易被回收 |
-| 网关服务 | 绿点 | 没在跑就去看板或重启 App |
+| 前台服务 | `foregroundServiceType=specialUse` | 带常驻通知，系统不会随便回收；不用 `dataSync` 是因为它有 6h/24h 上限 |
+| 划掉任务不停 | `stopWithTask="false"` | 从任务列表划掉 App，服务继续跑；只有通知栏「停止」才真停 |
+| 进程重启 | `START_STICKY` | 被系统回收后自动重建 |
+| 唤醒锁 | `PARTIAL_WAKE_LOCK` | 屏幕关了 CPU 也醒着，socket 不会睡死；服务销毁时一定释放 |
+| 健康探测 | 每 3 秒探一次 `/health` | 连续 15 次（约 45 秒）探不通 = 进程活着但不干活，自动重启 Python |
+| 闹钟兜底 | `AlarmManager` | 兜底的重启入口 |
 
-### 4. 建一把 API Key
+**通知栏会显示状态**，出问题时能看出是哪一层起作用了：
 
-控制台 → **密钥** → 右上角「+ 新建」。生成形如 `sk-wb-248d309d…`，点一下复制。
-
-### 5. 客户端填地址
-
-| 填什么 | 值 |
-|---|---|
-| Base URL | `http://127.0.0.1:8888/v1` |
-| API Key | 刚复制的 `sk-wb-…` |
-| 模型 | 控制台 → 模型 里任意一个 |
-
----
+```
+WorkBuddyAPI · 运行中                      正常
+WorkBuddyAPI · 运行中 · 自救 2 次           健康探测发现僵死，自动重启过 2 次
+WorkBuddyAPI · 未启动 · 上次被系统强杀（137） 被系统杀了，看上一节怎么放行
+```
 
 ## 三、界面一览
 
@@ -340,6 +365,30 @@ Content-Type: application/json
 
 设置 → 客户端接入 里有现成的地址和 Key 片段，点一下直接复制。
 
+**现成片段**（把 `sk-wb-...` 换成控制台里那把）：
+
+```bash
+# curl
+curl http://127.0.0.1:8888/v1/chat/completions \
+  -H "Authorization: Bearer sk-wb-..." \
+  -H "Content-Type: application/json" \
+  -d '{"model":"deepseek-v4.1-flash","messages":[{"role":"user","content":"hi"}]}'
+
+# Python SDK
+from openai import OpenAI
+client = OpenAI(base_url="http://127.0.0.1:8888/v1", api_key="sk-wb-...")
+
+# 环境变量（多数客户端认这个）
+OPENAI_BASE_URL=http://127.0.0.1:8888/v1
+OPENAI_API_KEY=sk-wb-...
+```
+
+**局域网给别人用**：设置 → 网关设置 → 打开局域网，然后把 `127.0.0.1` 换成手机 IP。
+**必须同时设非空的面板密码和 API Key**，否则等于把账号池公开在局域网里。
+
+**指定区域**：请求里带 `?realm=intl` 或 `X-Realm: intl` 头；
+如果这把 Key 在控制台里绑了区域，那个绑定优先，请求头会被忽略。
+
 > DSH 这类客户端**不读**网关宣告的能力，需要你在它自己的 provider 配置里
 > 声明 `reasoningEfforts` 才会显示档位菜单 —— 跟网关无关。
 
@@ -414,6 +463,41 @@ app/src/main/
 ---
 
 ## 十三、更新记录
+
+### 1.10.9-app130
+
+**思考处理补齐、后台自愈、定时任务可视化、文档补全。**
+
+思考（`/v1` 请求）
+- 「关思考」现在两条路径都认：`thinking.type=disabled` 和
+  `reasoning_effort=off/none/disabled`。判定成「关」之后会先清掉档位字段，
+  再把 `thinking` 明确置 disabled —— 否则 `off` 传到上游会被就近抬成最弱正档，
+  表现就是「说要关，实际开着最弱一档」
+
+后台自愈
+- **健康探测**：每 3 秒探一次 `/health`，连续 15 次（约 45 秒）不通 = 进程活着但
+  不干活，自动重启 Python
+- **被杀诊断**：通知栏显示自救次数和上次死因（`rc=137` = 被系统强杀 / `134` = Python 异常 等）
+
+看板
+- **设置 → 后台定时任务**：签到 / 旅行 / 保活 / 猫猫 四个小时表可视化编辑。
+  后端一直支持读写 `settings.schedule`，以前只能手改 JSON
+
+文档
+- 新增 [PITFALLS.md](PITFALLS.md)：记本机特有的坑（构建、合并、WebView、下载截断等 18 条）
+- README 新增「手机上怎么保证不掉线」：六层保活机制 + 通知栏状态怎么读
+- README「后台保活」一节重写：写清授权两项 + 国产 ROM 三处 + 怎么验证
+- README 客户端接入补 curl / Python SDK / 环境变量现成片段
+- README 新增「使用声明与免责」
+- 仓库加了 12 个 topics 标签
+
+```
+验证
+· 39 个 .py 语法全过
+· 沙箱启动 /health ok=true、控制台/调试台跨模块符号全在
+· dashboard JS node --check 通过
+· ：app:assembleRelease BUILD SUCCESSFUL，versionCode 100
+```
 
 ### 1.10.9-app129
 
@@ -548,7 +632,37 @@ app/src/main/
 
 ---
 
-## 十四、致谢与来源
+## 十四、使用声明与免责
+
+### 用途
+
+本项目是**个人自用工具**：管理你自己的账号、给自己本地工具提供一个 OpenAI 兼容入口。
+
+**不做、也不授权**：批量注册小号；对外售卖 API 额度、共享账号池、代充；
+二次加壳或捆绑卡密收费分发；以「公益服」「低价中转」等名义变相收费。
+
+### 风险
+
+- 上游对非官方客户端的识别与拦截在持续收紧，**这条通道随时可能失效**
+- 因使用非官方客户端导致的账号风控、限流、封禁，**由使用者自行承担**
+- 请优先使用官方客户端；**不要用主账号**，不要共享账号
+
+### 关于本仓库
+
+- 手机外壳、原生界面与各类修补为本项目新增，MIT 协议
+- 网关逻辑来自上游 [ardeyouxipianyi/workbuddy2api-hub](https://github.com/ardeyouxipianyi/workbuddy2api-hub)（MIT），
+  其版权声明保留在 `NOTICE`
+- 仓库**不含**任何账号凭据、签名密钥与本机运行数据
+
+### 凭证安全
+
+账号凭据在本机以 **AES-256-GCM 加密**存储（纯 Python 实现，不引入第三方依赖），
+但「导出账号」功能的输出是**明文**（含 accessToken / refreshToken），
+发给别人等于把账号交出去。
+
+---
+
+## 十五、致谢与来源
 
 - **[ardeyouxipianyi/workbuddy2api-hub](https://github.com/ardeyouxipianyi/workbuddy2api-hub)** —— 整个网关本体
   （`wb_proxy.py`、`wb_accounts.py`、`wb_settings.py`、`dashboard.html` 等），MIT。

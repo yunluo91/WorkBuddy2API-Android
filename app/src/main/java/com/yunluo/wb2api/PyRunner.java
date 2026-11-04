@@ -45,6 +45,14 @@ public final class PyRunner {
     private static volatile String error = "";
     private static volatile int port = DEFAULT_PORT;
     private static volatile boolean lanMode = false;
+    /**
+     * 上一次网关进程的「死因」。Integer.MIN_VALUE 表示还没死过。
+     *
+     * 进程被系统强杀时拿不到 JAVA 层的退出码（Chaquopy 是同进程，不是子进程），
+     * 所以这里记录的是我们**自己能观测到**的那部分：正常 stopping、启动异常、
+     * 或者被 os._exit 带走的码。取不到就不假装知道。
+     */
+    private static volatile int lastExitCode = Integer.MIN_VALUE;
 
     private PyRunner() {}
 
@@ -70,6 +78,16 @@ public final class PyRunner {
 
     public static boolean lanMode() {
         return lanMode;
+    }
+
+    /** 上一次退出码；没死过返回 Integer.MIN_VALUE。 */
+    public static int lastExitCode() {
+        return lastExitCode;
+    }
+
+    /** 记录一个退出码（供服务层展示）。 */
+    public static void noteExit(int code) {
+        lastExitCode = code;
     }
 
     public static String baseUrl() {
