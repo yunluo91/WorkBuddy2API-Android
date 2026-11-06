@@ -672,10 +672,9 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun BoardPane(holder: WebHolder) {
-        // 进看板默认全屏：手机屏小，网页自带的手机导航跟原生底栏叠一起会互相抢点击。
-        // 全屏后原生底栏收起，网页那条导航独占底部，能正常点；
-        // 右上角留一个原生小胶囊随时退出 —— 原生画在 WebView 之上，不会被盖住。
-        LaunchedEffect(Unit) { boardFullscreen = true }
+        // 看板默认**不**全屏：现在用的看板没有手机底部导航，跟原生底栏不冲突，
+        // 正常模式更符合直觉。右上角的胶囊保留着，想沉浸看的时候点一下就行。
+        LaunchedEffect(Unit) { boardFullscreen = false }
         // enableEdgeToEdge() 让整块窗口画到状态栏和手势条底下，
         // 网页自己的顶栏/底栏就会被切掉一半。这里让出系统栏：
         //   顶部永远让（状态栏）
