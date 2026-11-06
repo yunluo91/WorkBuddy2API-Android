@@ -119,10 +119,13 @@ private const val TOKEN_BRIDGE_JS: String = """(function(){
 })();"""
 
 /* WB-SAFE-AREA
-   原生那条玻璃底栏浮在 WebView 上面，网页最后几行会被它压住，
-   表现就是「最下面那排点不动」。这里给页面补一段下边距把内容顶上去：
-   64dp 底栏 + 12dp 外间距 + 约 24dp 系统导航栏 ≈ 100dp，留 112 安全余量。
-   纯样式，不动任何逻辑。 */
+   手机上有两条底部导航会打架：App 原生的玻璃底栏，和网页自带的
+   #nextBottomNav（总览/网关/账号/用量/更多）。两条叠在一起，点击互相抢，
+   表现就是「最下面那排点不动」。
+
+   处理：网页那条藏掉（☰ 侧栏能切全部九个分区，功能不缺），
+   再给页面补下边距给原生那条让位：64dp 栏 + 12dp 间距 + 24dp 系统条，
+   取 96px。纯样式，不动页面逻辑。 */
 private const val SAFE_AREA_JS: String = """(function(){
   try{
     var STYLE_ID = 'wb-app-safe-area';
@@ -132,9 +135,16 @@ private const val SAFE_AREA_JS: String = """(function(){
       st.id = STYLE_ID;
       (document.head || document.documentElement).appendChild(st);
     }
+    // ① 网页自己也有一条手机底部导航（#nextBottomNav：总览/网关/账号/用量/更多），
+    //    它跟 App 原生那条玻璃底栏叠在一起，两条都点不准。
+    //    用的是同一套「切换看板内分区」，而 ☰ 侧栏能切全部九个分区，
+    //    所以这里把它藏掉，只留原生那条。
+    // ② 网页内容照样要给原生底栏让位：64dp 栏 + 12dp 间距 + 24dp 系统条。
     st.textContent =
-      'body{padding-bottom:112px !important;}' +
-      'main{padding-bottom:calc(112px + 20px) !important;}';
+      '#nextBottomNav{display:none !important;}' +
+      '#nextMoreSheet{display:none !important;}' +
+      'body{padding-bottom:96px !important;}' +
+      'main{padding-bottom:calc(96px + 20px) !important;}';
   }catch(e){}
 })();"""
 
