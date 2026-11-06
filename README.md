@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.10.11--app133-0DBD8B?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest"><img src="https://img.shields.io/badge/Release-1.10.11--app134-0DBD8B?style=flat-square" alt="Release"></a>
   <img src="https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-2.3-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
@@ -101,7 +101,7 @@ com.yunluo.wb2api
 
 四项统一，源码目录是 `java/com/yunluo/wb2api/`。
 
-**版本号约定**：`versionName` 形如 `1.10.11-app133`（跟内嵌网关版本走，后面是 App 构建号），`versionCode` **固定 100**。
+**版本号约定**：`versionName` 形如 `1.10.11-app134`（跟内嵌网关版本走，后面是 App 构建号），`versionCode` **固定 100**。
 这样任意历史版本之间都能互相覆盖安装，不会出现 `INSTALL_FAILED_VERSION_DOWNGRADE`。
 
 ---
@@ -110,7 +110,7 @@ com.yunluo.wb2api
 
 ### 1. 装 APK
 
-从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.10.11-app133.apk`。
+从 [Releases](https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest) 下 `WorkBuddyAPI-1.10.11-app134.apk`。
 提示「未知来源」时允许即可。桌面图标叫 **WorkBuddy2API 2**。
 
 ### 2. 打开等网关起来
@@ -463,6 +463,42 @@ app/src/main/
 ---
 
 ## 十三、更新记录
+
+### 1.10.11-app134
+
+**看板整份换成 1.10.11 版，再把自研的六个块贴回去。** 这次两边的东西全都要。
+
+从上游新界面拿到的：
+
+- **账号分组**：分组筛选下拉、点账号名旁的芯片改分组、「+ 分组」、按组批量启停/
+  刷新凭证/测试/补积分、导入时指定分组、API Key 按组选入移除
+- **账号列表分页**：第 X 页 / 共 Y 页 + 上一页下一页
+- **风控连坐暂停面板**：剩余秒数提示 + 立即解除 + 设置里改暂停时长
+- **API Key 配置示例**：Base URL 与 cURL 片段，一键复制
+- **代理槽下拉改进**：多出「自动（随机挑选未使用的代理槽）」，登录时也能选出口
+- **新设置项**：单请求体上限、出口级瞬时失败退避、用量聚合保留窗口、账号级并发上限
+- **导航布局切换**：新导航布局 / 返回传统布局
+
+保留的自研界面（逐个贴回，全部核对存在且只定义一次）：
+
+```
+标题署名（宽屏内联 + 窄屏单独一行）
+账号导出（弹窗，一行一个可复制）
+单账号导出（弹窗 + 软换行）
+粘贴导入（wbacc1: 解析 → dryRun 预览 → 确认导入）
+全局提示词「导入」按钮
+后台定时任务（签到/旅行/保活/猫猫 + 抖动）
+```
+
+```
+验证
+· dashboard JS node --check 通过（521,960 字节的脚本块）
+· 十个自研函数各定义 1 次，无重复
+· 沙箱用真网关渲染：页面 1,249,965 字节，
+  标题「综合API网关」、署名、定时任务、粘贴导入、分组、连坐暂停、API 示例 全部在
+· current_version = 1.10.11，启动日志零异常
+· 39 个 .py 语法全过
+```
 
 ### 1.10.11-app133
 
