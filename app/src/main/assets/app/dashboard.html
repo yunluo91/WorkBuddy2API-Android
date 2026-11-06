@@ -681,6 +681,57 @@ a:hover{text-decoration:underline}
   .wb-signature-line{display:block}
 }
 
+/* 手机壳：把整页滚动改成「壳固定 + 只有内容滚」。
+   原来 #nextShell 只是 min-height:100vh，页面比屏幕高时整页在滚：
+   顶栏跟着滚走、底栏 fixed 却又被 Android 的橡皮筋回弹带着动，
+   两个一起来回拉，表现就是「拉下来顶栏下来、导航没了」。
+   这里把 body 变成一列 flex 高度锁死，只让 #nextContent 滚。 */
+@media (max-width:860px){
+  html[data-ui="next"],
+  html[data-ui="next"] body{
+    height:100%;
+    overflow:hidden !important;
+    overscroll-behavior:none !important;
+  }
+  html[data-ui="next"] body{
+    display:flex;
+    flex-direction:column;
+    height:100dvh;
+  }
+  html[data-ui="next"] #nextShell{
+    flex:1 1 auto;
+    min-height:0 !important;
+    height:auto !important;
+  }
+  html[data-ui="next"] #nextMain{
+    flex:1 1 auto;
+    min-height:0;
+  }
+  /* 只有这块滚 */
+  html[data-ui="next"] #nextContent{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  /* 顶栏和底栏都变成 flex 的固定项，不再依赖 sticky/fixed */
+  html[data-ui="next"] #nextTopbar{
+    position:relative !important;
+    top:auto !important;
+    flex:0 0 auto;
+  }
+  html[data-ui="next"] #nextBottomNav{
+    position:relative !important;
+    left:auto !important;
+    right:auto !important;
+    bottom:auto !important;
+    flex:0 0 auto;
+  }
+  /* 内容底部不需要再为底栏留 88px —— 底栏现在占的是真实布局空间 */
+  html[data-ui="next"] #nextContent > main{padding-bottom:24px !important;}
+}
+
 /* 手机壳：顶栏跟随滚动会「滑下去就看不见上面的标题」，
    底栏是 fixed 所以一直在。把顶栏改成 sticky 粘在顶部，
    并用半透明底把下面的内容盖住，滚动时不会互相穿透。 */
