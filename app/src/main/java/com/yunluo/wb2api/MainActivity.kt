@@ -143,8 +143,36 @@ private const val SAFE_AREA_JS: String = """(function(){
     st.textContent =
       '#nextBottomNav{display:none !important;}' +
       '#nextMoreSheet{display:none !important;}' +
+      // 手机侧栏的遮罩原来 z-index 只有 35，被整页容器压在底下 ——
+      // 表现就是「侧栏拉出来了，点旁边的空白关不掉」。
+      // 把遮罩抬到内容之上、侧栏再压遮罩，点空白才会真的落在遮罩上。
+      'html[data-ui="next"] .next-sidebar-backdrop{z-index:400 !important;}' +
+      'html[data-ui="next"] #nextSidebar{z-index:410 !important;}' +
+      'body.console-nav-open .console-scrim{z-index:400 !important;}' +
+      'body.console-nav-open .console-sidebar{z-index:410 !important;}' +
       'body{padding-bottom:96px !important;}' +
       'main{padding-bottom:calc(96px + 20px) !important;}';
+
+    // 兜底：即使层级没生效，点侧栏以外的任何地方也把它关掉。
+    // 用捕获阶段，先于页面自己的处理执行。
+    if(!window.__wbSidebarAway){
+      window.__wbSidebarAway = 1;
+      document.addEventListener('click', function(e){
+        try{
+          var body = document.body;
+          var nextOpen = body.classList.contains('next-sidebar-open');
+          var consoleOpen = body.classList.contains('console-nav-open');
+          if(!nextOpen && !consoleOpen) return;
+          var t = e.target;
+          // 点在侧栏里面、或者点在 ☰ 按钮上，交给页面自己处理
+          var sb = document.getElementById('nextSidebar') || document.getElementById('consoleSidebar');
+          if(sb && sb.contains(t)) return;
+          if(t && t.closest && t.closest('.next-menu-btn, #btnConsoleNav')) return;
+          if(nextOpen && typeof nextOpenSidebar === 'function') nextOpenSidebar(false);
+          if(consoleOpen && typeof setConsoleNavOpen === 'function') setConsoleNavOpen(false);
+        }catch(err){}
+      }, true);
+    }
   }catch(e){}
 })();"""
 
