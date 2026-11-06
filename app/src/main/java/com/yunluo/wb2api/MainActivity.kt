@@ -118,6 +118,26 @@ private const val TOKEN_BRIDGE_JS: String = """(function(){
   }catch(e){}
 })();"""
 
+/* WB-SAFE-AREA
+   原生那条玻璃底栏浮在 WebView 上面，网页最后几行会被它压住，
+   表现就是「最下面那排点不动」。这里给页面补一段下边距把内容顶上去：
+   64dp 底栏 + 12dp 外间距 + 约 24dp 系统导航栏 ≈ 100dp，留 112 安全余量。
+   纯样式，不动任何逻辑。 */
+private const val SAFE_AREA_JS: String = """(function(){
+  try{
+    var STYLE_ID = 'wb-app-safe-area';
+    var st = document.getElementById(STYLE_ID);
+    if(!st){
+      st = document.createElement('style');
+      st.id = STYLE_ID;
+      (document.head || document.documentElement).appendChild(st);
+    }
+    st.textContent =
+      'body{padding-bottom:112px !important;}' +
+      'main{padding-bottom:calc(112px + 20px) !important;}';
+  }catch(e){}
+})();"""
+
 private const val OVERSCROLL_FIX_JS: String = """(function(){
   try{
     if(window.__wbOSFix) return; window.__wbOSFix = 1;
@@ -2284,6 +2304,7 @@ class MainActivity : ComponentActivity() {
                 try { view?.evaluateJavascript(LOGIN_HOOK_JS, null) } catch (_: Throwable) {}
                 try { view?.evaluateJavascript(HEADER_HOOK_JS, null) } catch (_: Throwable) {}
                 try { view?.evaluateJavascript(OVERSCROLL_FIX_JS, null) } catch (_: Throwable) {}
+                try { view?.evaluateJavascript(SAFE_AREA_JS, null) } catch (_: Throwable) {}
                 // 万一还是命中了 404 页，别让用户看见：自己退回去重新加载
                 view?.let { v ->
                     v.evaluateJavascript(
@@ -2478,6 +2499,8 @@ class MainActivity : ComponentActivity() {
                 toolRetry = 0
                 // 把控制台令牌送回原生层，原生页面才拿得到 /api/* 的数据
                 try { view?.evaluateJavascript(TOKEN_BRIDGE_JS, null) } catch (_: Throwable) {}
+                // 原生底栏压住网页底部 → 补安全区
+                try { view?.evaluateJavascript(SAFE_AREA_JS, null) } catch (_: Throwable) {}
             }
 
             /**
