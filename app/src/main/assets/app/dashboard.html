@@ -728,8 +728,14 @@ a:hover{text-decoration:underline}
     bottom:auto !important;
     flex:0 0 auto;
   }
-  /* 内容底部不需要再为底栏留 88px —— 底栏现在占的是真实布局空间 */
+  /* 内容底部不需要再为底栏留 88px */
   html[data-ui="next"] #nextContent > main{padding-bottom:24px !important;}
+
+  /* 手机底部那条网页导航（总览/网关/账号/用量/更多）不要了：
+     App 自己有底栏，看板里切分区用左上角 ☰ 侧栏，
+     两条导航只会互相抢位置。连它弹出的「更多」面板一起藏掉。 */
+  html[data-ui="next"] #nextBottomNav{display:none !important;}
+  html[data-ui="next"] #nextMoreSheet{display:none !important;}
 }
 
 /* 手机壳：顶栏跟随滚动会「滑下去就看不见上面的标题」，
