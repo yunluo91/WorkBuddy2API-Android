@@ -118,61 +118,37 @@ private const val TOKEN_BRIDGE_JS: String = """(function(){
   }catch(e){}
 })();"""
 
-/* WB-SAFE-AREA
-   手机上有两条底部导航会打架：App 原生的玻璃底栏，和网页自带的
-   #nextBottomNav（总览/网关/账号/用量/更多）。两条叠在一起，点击互相抢，
-   表现就是「最下面那排点不动」。
-
-   处理：网页那条藏掉（☰ 侧栏能切全部九个分区，功能不缺），
-   再给页面补下边距给原生那条让位：64dp 栏 + 12dp 间距 + 24dp 系统条，
-   取 96px。纯样式，不动页面逻辑。 */
-private const val SAFE_AREA_JS: String = """(function(){
+/* WB-FULLSCREEN 在看板右上角塞一个「全屏」按钮。
+   点了把 App 原生那条底栏收起来，网页占满整块屏；再点恢复。
+   只加一个按钮，页面本身不动。 */
+private const val FULLSCREEN_BTN_JS: String = """(function(){
   try{
-    var STYLE_ID = 'wb-app-safe-area';
-    var st = document.getElementById(STYLE_ID);
-    if(!st){
-      st = document.createElement('style');
-      st.id = STYLE_ID;
-      (document.head || document.documentElement).appendChild(st);
-    }
-    // ① 网页自己也有一条手机底部导航（#nextBottomNav：总览/网关/账号/用量/更多），
-    //    它跟 App 原生那条玻璃底栏叠在一起，两条都点不准。
-    //    用的是同一套「切换看板内分区」，而 ☰ 侧栏能切全部九个分区，
-    //    所以这里把它藏掉，只留原生那条。
-    // ② 网页内容照样要给原生底栏让位：64dp 栏 + 12dp 间距 + 24dp 系统条。
-    st.textContent =
-      '#nextBottomNav{display:none !important;}' +
-      '#nextMoreSheet{display:none !important;}' +
-      // 手机侧栏的遮罩原来 z-index 只有 35，被整页容器压在底下 ——
-      // 表现就是「侧栏拉出来了，点旁边的空白关不掉」。
-      // 把遮罩抬到内容之上、侧栏再压遮罩，点空白才会真的落在遮罩上。
-      'html[data-ui="next"] .next-sidebar-backdrop{z-index:400 !important;}' +
-      'html[data-ui="next"] #nextSidebar{z-index:410 !important;}' +
-      'body.console-nav-open .console-scrim{z-index:400 !important;}' +
-      'body.console-nav-open .console-sidebar{z-index:410 !important;}' +
-      'body{padding-bottom:96px !important;}' +
-      'main{padding-bottom:calc(96px + 20px) !important;}';
-
-    // 兜底：即使层级没生效，点侧栏以外的任何地方也把它关掉。
-    // 用捕获阶段，先于页面自己的处理执行。
-    if(!window.__wbSidebarAway){
-      window.__wbSidebarAway = 1;
-      document.addEventListener('click', function(e){
+    var ID = 'wb-fs-btn';
+    var btn = document.getElementById(ID);
+    if(!btn){
+      btn = document.createElement('button');
+      btn.id = ID;
+      btn.type = 'button';
+      btn.style.cssText = 'position:fixed;right:12px;bottom:104px;z-index:99998;'
+        + 'padding:8px 12px;border-radius:999px;border:1px solid var(--line,#232a33);'
+        + 'background:rgba(22,27,34,.92);color:var(--fg,#e6edf3);font:12px/1 '
+        + '-apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.45);'
+        + 'backdrop-filter:blur(10px);cursor:pointer';
+      btn.onclick = function(){
         try{
-          var body = document.body;
-          var nextOpen = body.classList.contains('next-sidebar-open');
-          var consoleOpen = body.classList.contains('console-nav-open');
-          if(!nextOpen && !consoleOpen) return;
-          var t = e.target;
-          // 点在侧栏里面、或者点在 ☰ 按钮上，交给页面自己处理
-          var sb = document.getElementById('nextSidebar') || document.getElementById('consoleSidebar');
-          if(sb && sb.contains(t)) return;
-          if(t && t.closest && t.closest('.next-menu-btn, #btnConsoleNav')) return;
-          if(nextOpen && typeof nextOpenSidebar === 'function') nextOpenSidebar(false);
-          if(consoleOpen && typeof setConsoleNavOpen === 'function') setConsoleNavOpen(false);
-        }catch(err){}
-      }, true);
+          var next = !(WbBridge.isFullscreen && WbBridge.isFullscreen());
+          WbBridge.setFullscreen(next);
+          sync(next);
+        }catch(e){}
+      };
+      document.body.appendChild(btn);
     }
+    function sync(on){
+      btn.textContent = on ? '✕ 退出全屏' : '⛶ 全屏';
+      btn.style.bottom = on ? '16px' : '104px';
+      try{ document.documentElement.classList.toggle('wb-immersive', !!on); }catch(e){}
+    }
+    try{ sync(WbBridge.isFullscreen && WbBridge.isFullscreen()); }catch(e){ sync(false); }
   }catch(e){}
 })();"""
 
@@ -262,6 +238,12 @@ class MainActivity : ComponentActivity() {
     private var bootStatus by mutableStateOf("正在准备运行时…")
     private var bootLog by mutableStateOf("")
     private var booting by mutableStateOf(true)
+    
+    /* WB-FULLSCREEN 看板「全屏」开关。
+       手机屏小，看板自带的手机导航跟 App 原生那条底栏会打架；
+       与其硬适配，不如给个开关：细看的时候把外面的壳收起来，整块屏留给网页。
+       切到别的页签自动复位。 */
+    private var boardFullscreen by mutableStateOf(false)
     private var bootFailed by mutableStateOf(false)
     private var currentTab by mutableStateOf(WbTab.Chat)
     private var toolProgress by mutableStateOf(0)
@@ -578,7 +560,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (!booting) {
+                if (!booting && !boardFullscreen) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2340,9 +2322,10 @@ class MainActivity : ComponentActivity() {
                 boardLoadFailed = false
                 // 这两个 HOOK 只是锦上添花，失败不该影响页面
                 try { view?.evaluateJavascript(LOGIN_HOOK_JS, null) } catch (_: Throwable) {}
+                // 看板右上角的「全屏」按钮
+                try { view?.evaluateJavascript(FULLSCREEN_BTN_JS, null) } catch (_: Throwable) {}
                 try { view?.evaluateJavascript(HEADER_HOOK_JS, null) } catch (_: Throwable) {}
                 try { view?.evaluateJavascript(OVERSCROLL_FIX_JS, null) } catch (_: Throwable) {}
-                try { view?.evaluateJavascript(SAFE_AREA_JS, null) } catch (_: Throwable) {}
                 // 万一还是命中了 404 页，别让用户看见：自己退回去重新加载
                 view?.let { v ->
                     v.evaluateJavascript(
@@ -2537,8 +2520,6 @@ class MainActivity : ComponentActivity() {
                 toolRetry = 0
                 // 把控制台令牌送回原生层，原生页面才拿得到 /api/* 的数据
                 try { view?.evaluateJavascript(TOKEN_BRIDGE_JS, null) } catch (_: Throwable) {}
-                // 原生底栏压住网页底部 → 补安全区
-                try { view?.evaluateJavascript(SAFE_AREA_JS, null) } catch (_: Throwable) {}
             }
 
             /**
@@ -2686,6 +2667,8 @@ class MainActivity : ComponentActivity() {
     // ---------------------------------------------------------------- 页签
 
     private fun showTool(tab: WbTab) {
+        // 换页签就退出全屏：全屏是「看这一页」的临时状态，不该带到下一页
+        if (boardFullscreen) boardFullscreen = false
         currentTab = tab
     }
 
@@ -3254,6 +3237,16 @@ class MainActivity : ComponentActivity() {
          * 而页面自己一定拿得到 —— 它就写在 <meta name="wb-token"> 里。
          * 让页面送过来，比原生去猜文件什么时候写好稳得多。
          */
+        /** 页面里的「全屏」按钮调这个：true = 收起原生壳，false = 恢复。 */
+        @android.webkit.JavascriptInterface
+        fun setFullscreen(on: Boolean) {
+            runOnUiThread { boardFullscreen = on }
+        }
+
+        /** 页面加载完问一次当前状态，好把按钮文案写对。 */
+        @android.webkit.JavascriptInterface
+        fun isFullscreen(): Boolean = boardFullscreen
+
         @android.webkit.JavascriptInterface
         fun saveToken(tk: String?) {
             val v = tk?.trim() ?: return
