@@ -18,6 +18,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -669,19 +670,40 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun BoardPane(holder: WebHolder) {
-        AndroidView(
-            factory = {
-                holder.web.also {
-                    // 跟 WebHolder 构造里那道是双保险
-                    it.layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-            update = { }
-        )
+        // 进看板默认全屏：手机屏小，网页自带的手机导航跟原生底栏叠一起会互相抢点击。
+        // 全屏后原生底栏收起，网页那条导航独占底部，能正常点；
+        // 右上角留一个原生小胶囊随时退出 —— 原生画在 WebView 之上，不会被盖住。
+        LaunchedEffect(Unit) { boardFullscreen = true }
+        Box(Modifier.fillMaxSize()) {
+            AndroidView(
+                factory = {
+                    holder.web.also {
+                        // 跟 WebHolder 构造里那道是双保险
+                        it.layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+                update = { }
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 10.dp, end = 10.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color(0xE6161B22))
+                    .clickable { boardFullscreen = !boardFullscreen }
+                    .padding(horizontal = 12.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    text = if (boardFullscreen) "✕ 退出全屏" else "⛶ 全屏",
+                    style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+                    color = Color(0xFFE6EDF3),
+                )
+            }
+        }
 
         // 必须等网关确认可用之后才 loadUrl。
         // 绑到 booting 上：booting 变 false 说明 healthy() 探到
