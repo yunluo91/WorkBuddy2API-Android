@@ -97,6 +97,30 @@
   .wb-signature{display:none}
   .wb-signature-line{display:block}
 }
+
+/* 手机侧栏导航：顶部那排页签在窄屏换成左上角 ☰ + 抽屉。 */
+#wbNavBtn{display:none;align-items:center;justify-content:center;
+  width:34px;height:34px;flex:0 0 auto;border-radius:9px;cursor:pointer;
+  background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+  font-size:16px;line-height:1;padding:0}
+#wbNavScrim{display:none;position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .18s ease}
+body.wb-nav-open #wbNavScrim{display:block;opacity:1;pointer-events:auto}
+#wbNav{position:fixed;left:0;top:0;bottom:0;width:250px;max-width:82vw;z-index:999;
+  background:var(--panel,#161b22);border-right:1px solid var(--line,#232a33);
+  transform:translateX(-102%);transition:transform .2s ease;display:flex;flex-direction:column;
+  padding:14px 10px;gap:2px;overflow-y:auto;overscroll-behavior:contain}
+body.wb-nav-open #wbNav{transform:translateX(0)}
+#wbNav .wb-nav-cap{font-size:11px;color:var(--dim);padding:6px 10px 8px;letter-spacing:.05em}
+#wbNav button.wb-nav-item{display:flex;align-items:center;gap:10px;width:100%;
+  padding:11px 12px;border-radius:10px;border:0;background:transparent;color:var(--fg);
+  font:inherit;font-size:14px;text-align:left;cursor:pointer;white-space:nowrap}
+#wbNav button.wb-nav-item.on{background:var(--accent-soft,rgba(13,189,139,.15));color:var(--accent);font-weight:600}
+#wbNav .wb-nav-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;flex:0 0 auto}
+@media (max-width:640px){
+  #wbNavBtn{display:flex}
+  .main-nav{display:none !important}   /* 手机上改用侧栏 */
+}
 </style>
 <script>
 /* 面板会话令牌的存储键。全页只在这里定义一次：首帧判定要用它，所以必须先于
@@ -4383,6 +4407,7 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
 <body>
 <header>
   <div class="header-left" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+    <button type="button" id="wbNavBtn" onclick="wbNavOpen(!document.body.classList.contains('wb-nav-open'))" aria-label="打开导航">☰</button>
     <!-- WB-SIGNATURE
          「WorkBuddy 网关」右边的小署名。
          字号比 h1 小一号、颜色用弱化的 --dim，
@@ -19386,6 +19411,78 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
+})();
+</script>
+<script>
+/* 点侧栏以外的空白就关掉侧栏。
+   开关函数被包在各自 IIFE 里，外部调不到，直接改 body 上的开关 class。 */
+(function(){
+  if(window.__wbSidebarAway) return;
+  window.__wbSidebarAway = 1;
+  document.addEventListener('click', function(e){
+    try{
+      var body = document.body;
+      var nextOpen = body.classList.contains('next-sidebar-open');
+      var consOpen = body.classList.contains('console-nav-open');
+      if(!nextOpen && !consOpen) return;
+      var t = e.target;
+      var sb = document.getElementById('nextSidebar') ||
+               document.getElementById('consoleSidebar');
+      if(sb && t && sb.contains(t)) return;
+      if(t && t.closest && t.closest('.next-menu-btn, #btnConsoleNav, .console-mobile-menu')) return;
+      if(nextOpen) body.classList.remove('next-sidebar-open');
+      if(consOpen) body.classList.remove('console-nav-open');
+    }catch(err){}
+  }, true);
+})();
+</script>
+<div id="wbNavScrim" onclick="wbNavOpen(false)"></div>
+<aside id="wbNav" aria-label="主导航">
+  <div class="wb-nav-cap">工作台</div>
+  <button type="button" class="wb-nav-item" data-tab="gateway" onclick="wbNavGo('gateway')"><span class="wb-nav-dot"></span>网关</button>
+  <button type="button" class="wb-nav-item" data-tab="accounts" onclick="wbNavGo('accounts')"><span class="wb-nav-dot"></span>账号</button>
+  <button type="button" class="wb-nav-item" data-tab="analytics" onclick="wbNavGo('analytics')"><span class="wb-nav-dot"></span>用量</button>
+  <button type="button" class="wb-nav-item" data-tab="tasks" onclick="wbNavGo('tasks')"><span class="wb-nav-dot"></span>自动化</button>
+  <button type="button" class="wb-nav-item" data-tab="agents" onclick="wbNavGo('agents')"><span class="wb-nav-dot"></span>智能体</button>
+  <button type="button" class="wb-nav-item" data-tab="settings" onclick="wbNavGo('settings')"><span class="wb-nav-dot"></span>设置</button>
+  <button type="button" class="wb-nav-item" data-tab="logs" onclick="wbNavGo('logs')"><span class="wb-nav-dot"></span>日志</button>
+</aside>
+<script>
+/* 手机侧栏导航：开关只改 body class；切分区复用页面原有的 switchMainTab。 */
+function wbNavOpen(open){ document.body.classList.toggle('wb-nav-open', !!open); }
+function wbNavGo(tab){
+  try{ if(typeof switchMainTab === 'function') switchMainTab(tab); }catch(e){}
+  wbNavOpen(false);
+}
+/* 点侧栏以外的任何地方都关 */
+(function(){
+  if(window.__wbNavAway) return; window.__wbNavAway = 1;
+  document.addEventListener('click', function(e){
+    try{
+      if(!document.body.classList.contains('wb-nav-open')) return;
+      var t = e.target, nav = document.getElementById('wbNav');
+      if(nav && t && nav.contains(t)) return;
+      if(t && t.closest && t.closest('#wbNavBtn')) return;
+      wbNavOpen(false);
+    }catch(err){}
+  }, true);
+})();
+/* 当前分区高亮：跟顶部页签的 active 同步 */
+(function(){
+  function sync(){
+    try{
+      var active = document.querySelector('.main-nav-btn.active');
+      var map = {btnNavGateway:'gateway', btnNavAccounts:'accounts', btnNavTasks:'tasks',
+                 btnNavAnalytics:'analytics', btnNavAgents:'agents',
+                 btnNavSettings:'settings', btnNavLogs:'logs'};
+      var tab = (active && map[active.id]) || '';
+      document.querySelectorAll('#wbNav .wb-nav-item').forEach(function(b){
+        b.classList.toggle('on', b.dataset.tab === tab);
+      });
+    }catch(e){}
+  }
+  document.addEventListener('DOMContentLoaded', sync);
+  setInterval(sync, 800);
 })();
 </script>
 </body>
