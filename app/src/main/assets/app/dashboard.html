@@ -680,6 +680,34 @@ a:hover{text-decoration:underline}
   .wb-signature{display:none}
   .wb-signature-line{display:block}
 }
+
+/* 窄屏：手机上一排按钮挤不下时，字会竖着断（一行一个字）。
+   根因是 .tb-group 用了 inline-flex 且不换行，按钮被压到只剩一两个字宽。
+   这里放开换行，并且按钮永不压缩、永不竖排 —— 宁可多占几行。 */
+@media (max-width:640px){
+  .tb-group{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    width:100% !important;
+    gap:6px !important;
+  }
+  .tb-group > button{
+    flex:0 0 auto !important;
+    white-space:nowrap !important;
+  }
+  /* 账号卡片里那几排操作按钮同理 */
+  .acct-actions, .acct-tools, .acct-row-actions{
+    display:flex; flex-wrap:wrap; gap:6px;
+  }
+  .acct-actions > button, .acct-tools > button, .acct-row-actions > button,
+  button.sec.mini{
+    flex:0 0 auto; white-space:nowrap;
+  }
+  /* 顶部分区导航（账号列表/当前禁用/签到与活跃记录）也允许折行 */
+  .acct-subnav, .console-tabs{flex-wrap:wrap !important; overflow-x:visible !important;}
+  /* 窄屏按钮字号收一点，长标签不容易撑开 */
+  .tb-group > button, button.sec{font-size:11.5px;padding:6px 10px;}
+}
 .main-page.page-nav-on > .page-sidebar{grid-column:1;grid-row:1 / -1;position:sticky;
   top:var(--page-nav-top,84px);z-index:6;background:var(--panel);border:1px solid var(--line);
   border-radius:14px;padding:10px;box-shadow:var(--shadow);

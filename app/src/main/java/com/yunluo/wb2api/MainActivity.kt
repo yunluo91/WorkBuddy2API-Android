@@ -691,9 +691,11 @@ class MainActivity : ComponentActivity() {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 10.dp, end = 10.dp)
+                    // 让开网页自己的顶栏（next 布局约 60px），
+                    // 否则会压住右上角的「国内版」徽章和布局切换按钮
+                    .padding(top = 66.dp, end = 10.dp)
                     .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xE6161B22))
+                    .background(Color(0xD9161B22))
                     .clickable { boardFullscreen = !boardFullscreen }
                     .padding(horizontal = 12.dp, vertical = 7.dp)
             ) {
