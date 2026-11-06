@@ -98,28 +98,53 @@
   .wb-signature-line{display:block}
 }
 
-/* 手机侧栏导航：顶部那排页签在窄屏换成左上角 ☰ + 抽屉。 */
-#wbNavBtn{display:none;align-items:center;justify-content:center;
-  width:34px;height:34px;flex:0 0 auto;border-radius:9px;cursor:pointer;
-  background:var(--panel2);border:1px solid var(--line);color:var(--fg);
-  font-size:16px;line-height:1;padding:0}
-#wbNavScrim{display:none;position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.5);
-  opacity:0;pointer-events:none;transition:opacity .18s ease}
-body.wb-nav-open #wbNavScrim{display:block;opacity:1;pointer-events:auto}
-#wbNav{position:fixed;left:0;top:0;bottom:0;width:250px;max-width:82vw;z-index:999;
-  background:var(--panel,#161b22);border-right:1px solid var(--line,#232a33);
-  transform:translateX(-102%);transition:transform .2s ease;display:flex;flex-direction:column;
-  padding:14px 10px;gap:2px;overflow-y:auto;overscroll-behavior:contain}
-body.wb-nav-open #wbNav{transform:translateX(0)}
-#wbNav .wb-nav-cap{font-size:11px;color:var(--dim);padding:6px 10px 8px;letter-spacing:.05em}
-#wbNav button.wb-nav-item{display:flex;align-items:center;gap:10px;width:100%;
-  padding:11px 12px;border-radius:10px;border:0;background:transparent;color:var(--fg);
-  font:inherit;font-size:14px;text-align:left;cursor:pointer;white-space:nowrap}
-#wbNav button.wb-nav-item.on{background:var(--accent-soft,rgba(13,189,139,.15));color:var(--accent);font-weight:600}
-#wbNav .wb-nav-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;flex:0 0 auto}
-@media (max-width:640px){
-  #wbNavBtn{display:flex}
-  .main-nav{display:none !important}   /* 手机上改用侧栏 */
+#nextSidebar{width:236px;flex:0 0 236px;position:sticky;top:0;height:100vh;z-index:40;
+.next-brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px}
+.next-brand-mark{width:31px;height:31px;border-radius:9px;background:var(--accent);color:#fff;
+.next-brand-text{display:flex;flex-direction:column;min-width:0}
+.next-brand-text b{font-size:14px;letter-spacing:-.02em;font-weight:750}
+.next-brand-text span{font-size:9.5px;color:var(--dim-light);letter-spacing:.02em;margin-top:1px}
+.next-nav-label{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+.next-nav{display:flex;flex-direction:column;gap:2px}
+.next-nav-item{appearance:none;border:0;background:transparent;color:var(--dim);
+.next-nav-item svg{width:17px;height:17px;flex:0 0 17px;opacity:.78}
+.next-nav-item:hover{background:var(--panel2);color:var(--fg)}
+.next-nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:650}
+.next-nav-item.active svg{opacity:1}
+.next-nav-item.next-disabled, .next-more-item.next-disabled, .next-bottom-item.next-disabled{opacity:.45;cursor:not-allowed}
+.next-nav-item.next-disabled:hover{background:transparent;color:var(--dim)}
+.next-menu-btn{display:none}
+#nextSidebar{width:210px;flex-basis:210px}
+#nextSidebar{position:fixed;left:0;top:0;bottom:0;width:260px;flex-basis:260px;
+.next-menu-btn{display:inline-flex}
+/* 手机抽屉：新版同一套样式，这里补上窄屏的定位（原版写在 @media 里） */
+@media (max-width:860px){
+  #nextSidebar{
+    position:fixed;left:0;top:0;bottom:0;width:250px;flex:0 0 250px;
+    transform:translateX(-104%);transition:transform .22s ease;
+    z-index:410 !important;box-shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+  body.next-sidebar-open #nextSidebar{transform:translateX(0)}
+  .next-sidebar-backdrop{
+    display:block;position:fixed;inset:0;z-index:400 !important;
+    background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s ease;
+  }
+  body.next-sidebar-open .next-sidebar-backdrop{opacity:1;pointer-events:auto}
+  #nextMenuBtn{display:inline-flex}
+  /* 手机上不再需要那排横排页签（已删除），这里保证内容不被挤 */
+}
+#nextMenuBtn{
+  display:none;align-items:center;justify-content:center;width:34px;height:34px;
+  flex:0 0 auto;border-radius:9px;cursor:pointer;padding:0;
+  background:var(--panel2);border:1px solid var(--line);color:var(--fg);font-size:16px;line-height:1;
+}
+
+/* 侧栏只在手机用；桌面保持原来的顶部页签，不破坏布局 */
+@media (min-width:861px){
+  #nextSidebar, .next-sidebar-backdrop, #nextMenuBtn{display:none !important}
+}
+@media (max-width:860px){
+  .main-nav{display:none !important}   /* 旧的那排页签在手机上不显示，空间释放出来 */
 }
 </style>
 <script>
@@ -1780,7 +1805,25 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
 }
 </style>
 <script>
-/* Runs before <body> is parsed, so the page the user last had is the
+/* Runs before <body>
+<aside id="nextSidebar" aria-label="主导航">
+      <div class="next-brand">
+        <div class="next-brand-mark">W</div>
+        <div class="next-brand-text"><b>WorkBuddy</b><span>gateway console</span></div>
+      </div>
+      <div class="next-nav-label">工作台</div>
+      <nav class="next-nav" id="nextNav">
+        <button type="button" class="next-nav-item" data-next-tab="gateway" onclick="wbSidebarGo('gateway')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z"/></svg><span>网关</span></button>
+        <button type="button" class="next-nav-item" data-next-tab="accounts" onclick="wbSidebarGo('accounts')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.4-3.2 2.4-5 5.5-5s5.1 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.5c2.7.2 4.3 1.8 4.8 4.5"/></svg><span>账号</span></button>
+        <button type="button" class="next-nav-item" data-next-tab="analytics" onclick="wbSidebarGo('analytics')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/></svg><span>用量</span></button>
+        <button type="button" class="next-nav-item" data-next-tab="tasks" onclick="wbSidebarGo('tasks')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg><span>自动化</span></button>
+        <button type="button" class="next-nav-item" data-next-tab="agents" onclick="wbSidebarGo('agents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M9 7V5.5A2.5 2.5 0 0 1 11.5 3h1A2.5 2.5 0 0 1 15 5.5V7M9 12h.01M15 12h.01M9.5 15.5h5"/></svg><span>智能体</span></button>
+        <button type="button" class="next-nav-item" data-next-tab="settings" onclick="wbSidebarGo('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg><span>设置</span></button>
+        <button type="button" class="next-nav-item" data-next-tab="logs" onclick="wbSidebarGo('logs')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12.5 15H17"/></svg><span>日志</span></button>
+      </nav>
+</aside>
+<div class="next-sidebar-backdrop" onclick="wbSidebarOpen(false)"></div>
+ is parsed, so the page the user last had is the
    first one painted. Kept inline and dependency-free on purpose: an
    external or deferred script would run too late to avoid the flash. */
 (function(){
@@ -4407,7 +4450,7 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
 <body>
 <header>
   <div class="header-left" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
-    <button type="button" id="wbNavBtn" onclick="wbNavOpen(!document.body.classList.contains('wb-nav-open'))" aria-label="打开导航">☰</button>
+    <button type="button" id="nextMenuBtn" onclick="wbSidebarOpen(!document.body.classList.contains('next-sidebar-open'))" aria-label="打开导航">☰</button>
     <!-- WB-SIGNATURE
          「WorkBuddy 网关」右边的小署名。
          字号比 h1 小一号、颜色用弱化的 --dim，
@@ -19436,53 +19479,46 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
   }, true);
 })();
 </script>
-<div id="wbNavScrim" onclick="wbNavOpen(false)"></div>
-<aside id="wbNav" aria-label="主导航">
-  <div class="wb-nav-cap">工作台</div>
-  <button type="button" class="wb-nav-item" data-tab="gateway" onclick="wbNavGo('gateway')"><span class="wb-nav-dot"></span>网关</button>
-  <button type="button" class="wb-nav-item" data-tab="accounts" onclick="wbNavGo('accounts')"><span class="wb-nav-dot"></span>账号</button>
-  <button type="button" class="wb-nav-item" data-tab="analytics" onclick="wbNavGo('analytics')"><span class="wb-nav-dot"></span>用量</button>
-  <button type="button" class="wb-nav-item" data-tab="tasks" onclick="wbNavGo('tasks')"><span class="wb-nav-dot"></span>自动化</button>
-  <button type="button" class="wb-nav-item" data-tab="agents" onclick="wbNavGo('agents')"><span class="wb-nav-dot"></span>智能体</button>
-  <button type="button" class="wb-nav-item" data-tab="settings" onclick="wbNavGo('settings')"><span class="wb-nav-dot"></span>设置</button>
-  <button type="button" class="wb-nav-item" data-tab="logs" onclick="wbNavGo('logs')"><span class="wb-nav-dot"></span>日志</button>
-</aside>
+
 <script>
-/* 手机侧栏导航：开关只改 body class；切分区复用页面原有的 switchMainTab。 */
-function wbNavOpen(open){ document.body.classList.toggle('wb-nav-open', !!open); }
-function wbNavGo(tab){
-  try{ if(typeof switchMainTab === 'function') switchMainTab(tab); }catch(e){}
-  wbNavOpen(false);
+/* 手机侧栏（照新版那套：☰ + 抽屉 + 遮罩）。
+   切分区复用页面原有的 switchMainTab，所以内容还是旧版的。 */
+function wbSidebarOpen(open){
+  document.body.classList.toggle('next-sidebar-open', !!open);
 }
-/* 点侧栏以外的任何地方都关 */
+function wbSidebarGo(tab){
+  try{ if(typeof switchMainTab === 'function') switchMainTab(tab); }catch(e){}
+  wbSidebarOpen(false);
+}
+/* 点侧栏以外的任何地方都关（遮罩之外再兜一层，防止遮罩被别的东西压住） */
 (function(){
-  if(window.__wbNavAway) return; window.__wbNavAway = 1;
+  if(window.__wbSidebarAway) return; window.__wbSidebarAway = 1;
   document.addEventListener('click', function(e){
     try{
-      if(!document.body.classList.contains('wb-nav-open')) return;
-      var t = e.target, nav = document.getElementById('wbNav');
+      if(!document.body.classList.contains('next-sidebar-open')) return;
+      var t = e.target, nav = document.getElementById('nextSidebar');
       if(nav && t && nav.contains(t)) return;
-      if(t && t.closest && t.closest('#wbNavBtn')) return;
-      wbNavOpen(false);
+      if(t && t.closest && t.closest('#nextMenuBtn')) return;
+      wbSidebarOpen(false);
     }catch(err){}
   }, true);
 })();
-/* 当前分区高亮：跟顶部页签的 active 同步 */
+/* 高亮当前分区：跟顶部页签的 active 同步（顶部页签只是被 CSS 隐藏，逻辑还在） */
 (function(){
   function sync(){
     try{
-      var active = document.querySelector('.main-nav-btn.active');
+      var a = document.querySelector('.main-nav-btn.active');
       var map = {btnNavGateway:'gateway', btnNavAccounts:'accounts', btnNavTasks:'tasks',
                  btnNavAnalytics:'analytics', btnNavAgents:'agents',
                  btnNavSettings:'settings', btnNavLogs:'logs'};
-      var tab = (active && map[active.id]) || '';
-      document.querySelectorAll('#wbNav .wb-nav-item').forEach(function(b){
-        b.classList.toggle('on', b.dataset.tab === tab);
+      var tab = (a && map[a.id]) || '';
+      document.querySelectorAll('#nextNav .next-nav-item').forEach(function(b){
+        b.classList.toggle('active', b.dataset.nextTab === tab);
       });
     }catch(e){}
   }
   document.addEventListener('DOMContentLoaded', sync);
-  setInterval(sync, 800);
+  setInterval(sync, 700);
 })();
 </script>
 </body>

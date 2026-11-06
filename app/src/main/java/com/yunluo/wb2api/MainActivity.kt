@@ -19,7 +19,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -121,40 +120,6 @@ private const val TOKEN_BRIDGE_JS: String = """(function(){
   }catch(e){}
 })();"""
 
-/* WB-FULLSCREEN 在看板右上角塞一个「全屏」按钮。
-   点了把 App 原生那条底栏收起来，网页占满整块屏；再点恢复。
-   只加一个按钮，页面本身不动。 */
-private const val FULLSCREEN_BTN_JS: String = """(function(){
-  try{
-    var ID = 'wb-fs-btn';
-    var btn = document.getElementById(ID);
-    if(!btn){
-      btn = document.createElement('button');
-      btn.id = ID;
-      btn.type = 'button';
-      btn.style.cssText = 'position:fixed;right:12px;bottom:104px;z-index:99998;'
-        + 'padding:8px 12px;border-radius:999px;border:1px solid var(--line,#232a33);'
-        + 'background:rgba(22,27,34,.92);color:var(--fg,#e6edf3);font:12px/1 '
-        + '-apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.45);'
-        + 'backdrop-filter:blur(10px);cursor:pointer';
-      btn.onclick = function(){
-        try{
-          var next = !(WbBridge.isFullscreen && WbBridge.isFullscreen());
-          WbBridge.setFullscreen(next);
-          sync(next);
-        }catch(e){}
-      };
-      document.body.appendChild(btn);
-    }
-    function sync(on){
-      btn.textContent = on ? '✕ 退出全屏' : '⛶ 全屏';
-      btn.style.bottom = on ? '16px' : '104px';
-      try{ document.documentElement.classList.toggle('wb-immersive', !!on); }catch(e){}
-    }
-    try{ sync(WbBridge.isFullscreen && WbBridge.isFullscreen()); }catch(e){ sync(false); }
-  }catch(e){}
-})();"""
-
 private const val OVERSCROLL_FIX_JS: String = """(function(){
   try{
     if(window.__wbOSFix) return; window.__wbOSFix = 1;
@@ -242,11 +207,6 @@ class MainActivity : ComponentActivity() {
     private var bootLog by mutableStateOf("")
     private var booting by mutableStateOf(true)
     
-    /* WB-FULLSCREEN 看板「全屏」开关。
-       手机屏小，看板自带的手机导航跟 App 原生那条底栏会打架；
-       与其硬适配，不如给个开关：细看的时候把外面的壳收起来，整块屏留给网页。
-       切到别的页签自动复位。 */
-    private var boardFullscreen by mutableStateOf(false)
     private var bootFailed by mutableStateOf(false)
     private var currentTab by mutableStateOf(WbTab.Chat)
     private var toolProgress by mutableStateOf(0)
@@ -563,7 +523,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (!booting && !boardFullscreen) {
+                if (!booting) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -672,9 +632,6 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun BoardPane(holder: WebHolder) {
-        // 看板默认**不**全屏：现在用的看板没有手机底部导航，跟原生底栏不冲突，
-        // 正常模式更符合直觉。右上角的胶囊保留着，想沉浸看的时候点一下就行。
-        LaunchedEffect(Unit) { boardFullscreen = false }
         // enableEdgeToEdge() 让整块窗口画到状态栏和手势条底下，
         // 网页自己的顶栏/底栏就会被切掉一半。这里让出系统栏：
         //   顶部永远让（状态栏）
@@ -683,9 +640,6 @@ class MainActivity : ComponentActivity() {
             Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .then(
-                    if (boardFullscreen) Modifier.navigationBarsPadding() else Modifier
-                )
         ) {
             AndroidView(
                 factory = {
@@ -700,23 +654,6 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 update = { }
             )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    // 让开网页自己的顶栏（next 布局约 60px），
-                    // 否则会压住右上角的「国内版」徽章和布局切换按钮
-                    .padding(top = 8.dp, end = 10.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xD9161B22))
-                    .clickable { boardFullscreen = !boardFullscreen }
-                    .padding(horizontal = 12.dp, vertical = 7.dp)
-            ) {
-                Text(
-                    text = if (boardFullscreen) "✕ 退出全屏" else "⛶ 全屏",
-                    style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
-                    color = Color(0xFFE6EDF3),
-                )
-            }
         }
 
         // 必须等网关确认可用之后才 loadUrl。
@@ -2358,8 +2295,6 @@ class MainActivity : ComponentActivity() {
                 boardLoadFailed = false
                 // 这两个 HOOK 只是锦上添花，失败不该影响页面
                 try { view?.evaluateJavascript(LOGIN_HOOK_JS, null) } catch (_: Throwable) {}
-                // 看板右上角的「全屏」按钮
-                try { view?.evaluateJavascript(FULLSCREEN_BTN_JS, null) } catch (_: Throwable) {}
                 try { view?.evaluateJavascript(HEADER_HOOK_JS, null) } catch (_: Throwable) {}
                 try { view?.evaluateJavascript(OVERSCROLL_FIX_JS, null) } catch (_: Throwable) {}
                 // 万一还是命中了 404 页，别让用户看见：自己退回去重新加载
@@ -2703,8 +2638,6 @@ class MainActivity : ComponentActivity() {
     // ---------------------------------------------------------------- 页签
 
     private fun showTool(tab: WbTab) {
-        // 换页签就退出全屏：全屏是「看这一页」的临时状态，不该带到下一页
-        if (boardFullscreen) boardFullscreen = false
         currentTab = tab
     }
 
@@ -3273,16 +3206,6 @@ class MainActivity : ComponentActivity() {
          * 而页面自己一定拿得到 —— 它就写在 <meta name="wb-token"> 里。
          * 让页面送过来，比原生去猜文件什么时候写好稳得多。
          */
-        /** 页面里的「全屏」按钮调这个：true = 收起原生壳，false = 恢复。 */
-        @android.webkit.JavascriptInterface
-        fun setFullscreen(on: Boolean) {
-            runOnUiThread { boardFullscreen = on }
-        }
-
-        /** 页面加载完问一次当前状态，好把按钮文案写对。 */
-        @android.webkit.JavascriptInterface
-        fun isFullscreen(): Boolean = boardFullscreen
-
         @android.webkit.JavascriptInterface
         fun saveToken(tk: String?) {
             val v = tk?.trim() ?: return
