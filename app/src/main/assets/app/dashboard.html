@@ -731,6 +731,15 @@ a:hover{text-decoration:underline}
   /* 内容底部不需要再为底栏留 88px */
   html[data-ui="next"] #nextContent > main{padding-bottom:24px !important;}
 
+  /* 侧栏遮罩原来 z-index 只有 35，被页面内容压在底下 ——
+     表现就是「侧栏拉出来了，点右边的空白关不掉」（点了其实点在内容上）。
+     抬到 400，侧栏 410，点空白才会真的落在遮罩上。 */
+  html[data-ui="next"] .next-sidebar-backdrop{z-index:400 !important;}
+  html[data-ui="next"] #nextSidebar{z-index:410 !important;}
+  html[data-ui="next"] body.next-sidebar-open #nextContent{pointer-events:none;}
+  body.console-nav-open .console-scrim{z-index:400 !important;}
+  body.console-nav-open .console-sidebar{z-index:410 !important;}
+
   /* 手机底部那条网页导航（总览/网关/账号/用量/更多）不要了：
      App 自己有底栏，看板里切分区用左上角 ☰ 侧栏，
      两条导航只会互相抢位置。连它弹出的「更多」面板一起藏掉。 */
@@ -22296,6 +22305,33 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
     setTimeout(function(){ nextHideConflictingSettings(); nextHideLegacyHeaders(); }, 800);
   });
   nextSyncChrome(nextCurrentTab() || 'overview');
+})();
+</script>
+<script>
+/* 点侧栏以外的空白就关掉侧栏。
+   侧栏的开关函数（nextOpenSidebar / setConsoleNavOpen）被包在各自的 IIFE 里，
+   外部调不到，所以这里直接改 body 上的开关 class —— 那本来就是它们的开合方式。
+   用捕获阶段，先于页面自己的点击处理，避免被其它 handler 吃掉。 */
+(function(){
+  if(window.__wbSidebarAway) return;
+  window.__wbSidebarAway = 1;
+  document.addEventListener('click', function(e){
+    try{
+      var body = document.body;
+      var nextOpen = body.classList.contains('next-sidebar-open');
+      var consOpen = body.classList.contains('console-nav-open');
+      if(!nextOpen && !consOpen) return;
+      var t = e.target;
+      // 点在侧栏内部 → 不关（侧栏里的分区要能点）
+      var sb = document.getElementById('nextSidebar') ||
+               document.getElementById('consoleSidebar');
+      if(sb && t && sb.contains(t)) return;
+      // 点在 ☰ 上 → 交给页面自己的 toggle
+      if(t && t.closest && t.closest('.next-menu-btn, #btnConsoleNav, .console-mobile-menu')) return;
+      if(nextOpen) body.classList.remove('next-sidebar-open');
+      if(consOpen) body.classList.remove('console-nav-open');
+    }catch(err){}
+  }, true);
 })();
 </script>
 </body>
