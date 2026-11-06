@@ -681,6 +681,21 @@ a:hover{text-decoration:underline}
   .wb-signature-line{display:block}
 }
 
+/* 手机壳：顶栏跟随滚动会「滑下去就看不见上面的标题」，
+   底栏是 fixed 所以一直在。把顶栏改成 sticky 粘在顶部，
+   并用半透明底把下面的内容盖住，滚动时不会互相穿透。 */
+@media (max-width:860px){
+  html[data-ui="next"] #nextTopbar{
+    position:sticky; top:0; z-index:44;
+    background:var(--bg,#0e1116);
+    border-bottom:1px solid var(--line,#232a33);
+  }
+  /* 侧栏上滑时不要被 sticky 顶栏盖住，给它让出 60px */
+  html[data-ui="next"] #nextSidebar{top:0}
+  /* 内容区高度用动态视口单位，地址栏/手势条变化时不跳 */
+  html[data-ui="next"] #nextShell{min-height:100dvh}
+}
+
 /* 窄屏：手机上一排按钮挤不下时，字会竖着断（一行一个字）。
    根因是 .tb-group 用了 inline-flex 且不换行，按钮被压到只剩一两个字宽。
    这里放开换行，并且按钮永不压缩、永不竖排 —— 宁可多占几行。 */

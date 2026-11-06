@@ -18,6 +18,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -674,7 +676,18 @@ class MainActivity : ComponentActivity() {
         // 全屏后原生底栏收起，网页那条导航独占底部，能正常点；
         // 右上角留一个原生小胶囊随时退出 —— 原生画在 WebView 之上，不会被盖住。
         LaunchedEffect(Unit) { boardFullscreen = true }
-        Box(Modifier.fillMaxSize()) {
+        // enableEdgeToEdge() 让整块窗口画到状态栏和手势条底下，
+        // 网页自己的顶栏/底栏就会被切掉一半。这里让出系统栏：
+        //   顶部永远让（状态栏）
+        //   底部只在全屏时让（非全屏时原生底栏自己已经处理了手势条）
+        Box(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .then(
+                    if (boardFullscreen) Modifier.navigationBarsPadding() else Modifier
+                )
+        ) {
             AndroidView(
                 factory = {
                     holder.web.also {
@@ -693,7 +706,7 @@ class MainActivity : ComponentActivity() {
                     .align(Alignment.TopEnd)
                     // 让开网页自己的顶栏（next 布局约 60px），
                     // 否则会压住右上角的「国内版」徽章和布局切换按钮
-                    .padding(top = 66.dp, end = 10.dp)
+                    .padding(top = 8.dp, end = 10.dp)
                     .clip(RoundedCornerShape(999.dp))
                     .background(Color(0xD9161B22))
                     .clickable { boardFullscreen = !boardFullscreen }
