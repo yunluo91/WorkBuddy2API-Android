@@ -5082,6 +5082,81 @@ html[data-ui="next"] .console-shell {display:contents!important}
 html[data-ui="next"] .console-sidebar, html[data-ui="next"] .console-scrim, html[data-ui="next"] .console-contextbar, html[data-ui="next"] #consoleLayoutOption {display:none!important}
 html[data-ui="next"] [data-next-tab][hidden] {display:none!important}
 html[data-ui="next"] #nextContent .console-shell > main {padding:24px;max-width:1600px;margin:0 auto;width:100%}
+
+/* ===== 手机端适配：防左右滑 + 上下滑把顶栏底栏切成一半 =====
+   问题一：页面比屏幕宽（有 width:640px / 860px 这种固定宽度），
+           能左右拖；还给整页撑出横向滚动条。
+   问题二：#nextShell 只有 min-height:100vh，页面比屏高时滚的是文档本身，
+           顶栏跟着滚走、底栏 fixed 又被橡皮筋带着动 —— 上下滑就各切一半。
+
+   处理：窄屏改成 app 式布局 —— 壳固定，只有 #nextContent 内部滚。 */
+
+/* 横向永远不滚：内容该换行的换行，实在宽的就地滚动（表格之类自己带容器） */
+html, body{
+  max-width:100% !important;
+  overflow-x:hidden !important;
+  overscroll-behavior-x:none !important;
+}
+
+@media (max-width:860px){
+  /* 一、纵向：壳固定，只让内容区滚 */
+  html[data-ui="next"],
+  html[data-ui="next"] body{
+    height:100%;
+    overflow:hidden !important;
+    overscroll-behavior:none !important;
+  }
+  html[data-ui="next"] body{
+    display:flex;
+    flex-direction:column;
+    height:100dvh;
+  }
+  html[data-ui="next"] #nextShell{
+    flex:1 1 auto;
+    min-height:0 !important;
+    height:auto !important;
+  }
+  html[data-ui="next"] #nextMain{
+    flex:1 1 auto;
+    min-height:0;
+  }
+  html[data-ui="next"] #nextContent{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  /* 顶栏与底栏变成 flex 的固定轨道，不再靠 sticky/fixed */
+  html[data-ui="next"] #nextTopbar{
+    position:relative !important;
+    top:auto !important;
+    flex:0 0 auto;
+  }
+  html[data-ui="next"] #nextBottomNav{
+    position:relative !important;
+    left:auto !important; right:auto !important; bottom:auto !important;
+    flex:0 0 auto;
+  }
+  /* 底栏现在占真实布局空间，内容不用再留 88px */
+  html[data-ui="next"] #nextContent > main{ padding-bottom:24px !important; }
+
+  /* 二、横向：这几类固定宽度在窄屏一律改成自适应 */
+  [style*="width:640px"], [style*="width: 640px"],
+  [style*="width:760px"], [style*="width: 760px"],
+  [style*="width:860px"], [style*="width: 860px"]{
+    width:100% !important;
+    max-width:100% !important;
+  }
+  /* 宽表格自己滚，不推整页 */
+  .table-wrap, .next-table-scroll, .table-scroll{
+    overflow-x:auto !important;
+    -webkit-overflow-scrolling:touch;
+  }
+  table{ max-width:100%; }
+}
+
 </style>
 </head>
 <body>
