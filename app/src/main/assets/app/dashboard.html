@@ -5298,6 +5298,72 @@ html, body{
   .cs-panel, .cs-wrap{ display:none !important; }
 }
 
+
+/* ===== 手机端：section 不自己滚（照搬旧版 WB-MOBILE-SCROLL）=====
+   症状：账号列表右侧挂一条常驻滚动条，内容在框里滚 ——
+   因为 section 同时带 max-height:var(--win-max-h) + overflow-y:auto。
+
+   手机上让整页交给 window 滚最省心：
+   section 不设上限、不建自己的滚动上下文，首行也不吸顶。 */
+@media (max-width:860px){
+  body.win-capped .main-page section{
+    max-height:none !important;
+    overflow:visible !important;
+    overflow-y:visible !important;
+    padding-top:14px;
+    overscroll-behavior:auto;
+    -webkit-overflow-scrolling:auto;
+  }
+  body.win-capped .main-page section > :first-child{
+    position:static;
+    padding-top:0;
+    padding-bottom:0;
+  }
+  body.win-capped #pageAnalytics section.panel{ overflow-y:visible !important; max-height:none !important; }
+  body.win-capped #logTerminalBody{ max-height:none !important; }
+
+  /* 不管有没有 win-capped，section 一律不滚 */
+  .main-page section,
+  .main-page > section{
+    max-height:none !important;
+    overflow:visible !important;
+  }
+  /* 表格容器也别自己滚（有横向滚动需求时它自带 .table-wrap） */
+  section .table-wrap{
+    max-height:none !important;
+  }
+}
+
+/* ===== 手机端：按钮文字永不竖排 =====
+   竖排的根因：flex 容器把按钮压窄到只剩一两个字宽，
+   文字只能一个一个字往下断。这里给所有按钮加 nowrap + 不压缩，
+   宁可换行、宁可占两行，也不让字竖着排。 */
+@media (max-width:860px){
+  button,
+  .sec, .mini, .slot-select, .cs-trigger{
+    white-space:nowrap !important;
+    word-break:keep-all !important;
+    overflow-wrap:normal !important;
+  }
+  /* 工具栏里的按钮：不压缩，放不下就整颗换到下一行 */
+  .toolbar > button,
+  .tb-group > button,
+  #accountsBody .toolbar button{
+    flex:0 0 auto !important;
+    min-width:auto !important;
+  }
+  .toolbar{
+    flex-wrap:wrap !important;
+    gap:6px !important;
+  }
+  .tb-group{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:6px !important;
+    width:auto !important;
+  }
+}
+
 </style>
 </head>
 <body>
