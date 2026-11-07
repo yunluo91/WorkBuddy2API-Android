@@ -5234,30 +5234,32 @@ html, body{
 }
 
 
-/* ===== 手机端：所有下拉改成横排按钮 + 折叠块默认展开 =====
-   原生 <select> 在手机上是滚轮选择器，选一次要点很多下。
-   窄屏把它藏掉，用 .wb-seg 里的按钮代替；按钮写回 select 并派发 change，
-   页面原有逻辑一行没改。
+/* ===== 手机端：下拉整体铺平（不留折叠、不留滚轮）=====
+   原生 <select> 在手机上是滚轮选择器，要拉、要点、要确认，太难受。
+   这里把它整个藏掉，把**所有选项**直接排出来（.wb-flat 里的按钮组）：
+   一眼看全，点哪个立刻生效，不用展开。
 
-   注意：只在窄屏藏 select。桌面宽屏仍是原生下拉，行为不变。 */
+   只在窄屏生效；桌面宽屏仍是原生下拉。 */
 @media (max-width:860px){
-  html.wb-expanded select{
+  html.wb-flattened select{
     display:none !important;
   }
-  /* 挂在不同父容器里也要排得整齐 */
-  .wb-seg{
+
+  .wb-flat{
     display:flex; flex-wrap:wrap; gap:5px;
-    width:100%; margin:2px 0 4px;
+    width:100%; margin:2px 0 6px;
   }
-  .wb-seg button{
+  .wb-flat button{
     appearance:none; flex:0 0 auto;
     padding:6px 11px; border-radius:999px;
     border:1px solid var(--line); background:var(--panel2);
     color:var(--dim); font:inherit; font-size:11.5px;
     cursor:pointer; white-space:nowrap;
     -webkit-tap-highlight-color:transparent;
+    transition:background .12s ease, color .12s ease, border-color .12s ease;
   }
-  .wb-seg button.on{
+  .wb-flat button:active{ transform:scale(.97); }
+  .wb-flat button.on{
     background:var(--accent-soft); color:var(--accent);
     border-color:var(--accent); font-weight:600;
   }
@@ -5268,20 +5270,16 @@ html, body{
     max-height:none !important;
     overflow:visible !important;
   }
-}
-
-
-/* 账号区默认铺平：手机上不希望「先点一下才看见账号」。
-   .collapsed 这类由 JS 加的类也一并压掉，只留按钮做装饰。 */
-@media (max-width:860px){
   #accountsBody.collapse,
   #accountsBody.collapsed,
   .collapse.collapsed{
-    max-height:none !important;
-    overflow:visible !important;
-    display:block !important;
+    max-height:none !important; overflow:visible !important; display:block !important;
   }
+
+  /* 原来给 .wb-seg 的规则作废（换名了，留着防旧缓存） */
+  .wb-seg{ display:none !important; }
 }
+
 </style>
 </head>
 <body>
@@ -22340,50 +22338,57 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
 })();
 </script>
 <script>
-/* 手机端：把页面里所有下拉（原生滚轮选择器）换成横排按钮，折叠块默认全部展开。
-   按钮与原 select 同步：点按钮 → 写 select.value → 派发 change 事件，
-   页面原有逻辑（ACCOUNT_FILTERS / loadActivityBoard / renderAccounts 等）原样跑。
+/* 手机端：把每个下拉「整个铺开」—— 所有选项直接排在页面上，点哪个切哪个。
+   不是换成"下拉按钮"，是彻底不留折叠：
+     <select><option>今日</option><option>近7天</option>…</select>
+   →
+     今日 │ 近 7 天(高亮) │ 近 30 天 │ …
+   点任意一项 = 写回 select.value + 派发 change，页面原逻辑一行没改。
 
-   覆盖范围：窄屏下所有可见的 <select>（除了明确标了 data-keep-select 的）。
-   选项是动态填的（分组、账号列表），所以用 MutationObserver 重建。 */
+   覆盖全页所有 <select>（除标了 data-keep-select 的）。桌面宽屏不处理。 */
 (function(){
-  if(window.__wbSegBound) return;
-  window.__wbSegBound = 1;
+  if(window.__wbFlatBound) return;
+  window.__wbFlatBound = 1;
 
   function isNarrow(){ return window.innerWidth <= 860; }
 
-  function buildSeg(el){
+  function build(el){
     if(!el || el.dataset.wbKeep === '1') return;
     var host = el.parentNode;
     if(!host) return;
-    var bar = host.querySelector('.wb-seg[data-for="' + el.id + '"]');
-    if(!bar){
-      bar = document.createElement('div');
-      bar.className = 'wb-seg';
-      bar.setAttribute('data-for', el.id);
-      host.insertBefore(bar, el);
+    var box = host.querySelector('.wb-flat[data-for="' + el.id + '"]');
+    if(!box){
+      box = document.createElement('div');
+      box.className = 'wb-flat';
+      box.setAttribute('data-for', el.id);
+      box.setAttribute('role', 'group');
+      box.setAttribute('aria-label', el.getAttribute('aria-label') || '');
+      host.insertBefore(box, el);
     }
     function render(){
-      // 选项没变化就不重画，避免闪烁（每次重建都会打乱点击手感）
-      var sig = Array.prototype.map.call(el.options, function(o){ return o.value + ':' + o.textContent; }).join('|');
-      if(bar.dataset.sig === sig && bar.dataset.val === el.value) return;
-      bar.dataset.sig = sig;
-      bar.dataset.val = el.value;
-      bar.innerHTML = '';
-      Array.prototype.forEach.call(el.options, function(opt){
+      var opts = Array.prototype.map.call(el.options, function(o){
+        return {v:o.value, t:o.textContent};
+      });
+      var sig = opts.map(function(o){ return o.v + ':' + o.t; }).join('|');
+      if(box.dataset.sig === sig && box.dataset.val === el.value) return;
+      box.dataset.sig = sig;
+      box.dataset.val = el.value;
+      box.innerHTML = '';
+      opts.forEach(function(o){
         var b = document.createElement('button');
         b.type = 'button';
-        b.textContent = opt.textContent;
-        if(opt.value === el.value) b.className = 'on';
+        b.className = (o.v === el.value) ? 'on' : '';
+        b.textContent = o.t;
         b.onclick = function(){
-          el.value = opt.value;
-          bar.dataset.val = opt.value;
+          el.value = o.v;
+          box.dataset.val = o.v;
+          Array.prototype.forEach.call(box.children, function(x){
+            x.className = (x === b) ? 'on' : '';
+          });
           el.dispatchEvent(new Event('change', {bubbles:true}));
-          // 立刻重画高亮，不等 observer
-          Array.prototype.forEach.call(bar.children, function(x){ x.className = ''; });
-          b.className = 'on';
+          el.dispatchEvent(new Event('input', {bubbles:true}));
         };
-        bar.appendChild(b);
+        box.appendChild(b);
       });
     }
     render();
@@ -22391,28 +22396,25 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
     try{ new MutationObserver(render).observe(el, {childList:true, subtree:true}); }catch(e){}
   }
 
-  function scanAll(){
+  function scan(){
+    if(!isNarrow()) return;
     Array.prototype.forEach.call(document.querySelectorAll('select'), function(el){
-      // 明确要保留原生下拉的（比如主题菜单那种依赖原生行为）
       if(el.getAttribute('data-keep-select') === '1') return;
-      buildSeg(el);
+      build(el);
     });
   }
 
   function expandAll(){
     Array.prototype.forEach.call(document.querySelectorAll('details'), function(d){ d.open = true; });
-    Array.prototype.forEach.call(document.querySelectorAll('.collapse'), function(c){
-      c.style.maxHeight = 'none'; c.style.overflow = 'visible';
-    });
-    Array.prototype.forEach.call(document.querySelectorAll('.collapse-inner'), function(c){
+    Array.prototype.forEach.call(document.querySelectorAll('.collapse, .collapse-inner'), function(c){
       c.style.maxHeight = 'none'; c.style.overflow = 'visible';
     });
   }
 
   function init(){
-    scanAll();
+    scan();
     expandAll();
-    document.documentElement.classList.add('wb-expanded');
+    document.documentElement.classList.add('wb-flattened');
   }
 
   if(document.readyState === 'loading'){
@@ -22423,12 +22425,9 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
   setTimeout(init, 2000);
   setTimeout(init, 5000);
 
-  // 页面里切换分区/重新渲染后，补一次
   try{
-    new MutationObserver(function(){
-      if(!isNarrow()) return;
-      scanAll();
-    }).observe(document.body, {childList:true, subtree:true});
+    new MutationObserver(function(){ if(isNarrow()) scan(); })
+      .observe(document.body, {childList:true, subtree:true});
   }catch(e){}
 })();
 </script>
