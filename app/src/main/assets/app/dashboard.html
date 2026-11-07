@@ -5364,6 +5364,46 @@ html, body{
   }
 }
 
+
+/* ===== 手机端：账号徽章不再把页面撑出屏幕 =====
+   症状：任务开 / 国内版 / 可用 / 体验版 四个徽章挂在账号名右边，
+   容器用了 margin-left:auto + flex-shrink:0 —— 徽章不肯缩，
+   又一直被推到最右，总宽超过屏幕就把整页撑宽，于是能左右拖。
+
+   处理：不去挤「名字 + 徽章」同一行，而是让徽章组整块换到下一行
+   （宽度 100%、允许自身折行）。这样：
+     · 名字行保持单行省略，不会被压
+     · 徽章有多少都放得下，多了自己换行
+     · 容器宽度永远不超过屏幕 → 页面不再左右拖 */
+@media (max-width:860px){
+  .acct-mobile-badges{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    width:100% !important;
+    max-width:100% !important;
+    margin-left:0 !important;
+    margin-top:4px !important;
+    gap:4px !important;
+    flex-shrink:1 !important;
+    min-width:0 !important;
+  }
+  .acct-mobile-badges > *{
+    flex:0 0 auto !important;
+    max-width:100%;
+  }
+  /* 名字那一行：允许收缩，长名字用省略号 */
+  .acct-name-row{
+    flex-wrap:wrap !important;
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+  .acct-name-row > b,
+  .acct-name-row > .acct-name{
+    min-width:0 !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+}
 </style>
 </head>
 <body>
