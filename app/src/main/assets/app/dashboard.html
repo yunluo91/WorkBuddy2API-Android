@@ -5794,18 +5794,7 @@ html, body{
     </h2>
     <div id="accountsBody" class="collapse">
       <div class="collapse-inner">
-    <div class="console-filterbar" aria-label="账号列表筛选">
-      <input id="accountSearchFilter" class="console-search" type="search" placeholder="搜索昵称、备注或 UID" aria-label="搜索账号" oninput="ACCOUNT_FILTERS.query=this.value;renderAccounts()">
-      <select id="accountStatusFilter" aria-label="账号状态" onchange="ACCOUNT_FILTERS.status=this.value;renderAccounts()">
-        <option value="">全部状态</option><option value="healthy">可用</option><option value="attention">需关注</option><option value="disabled">本地停用</option>
-      </select>
-      <select id="accountGroupFilter" aria-label="账号分组" onchange="ACCOUNT_FILTERS.group=this.value;renderAccounts()">
-        <option value="">全部分组</option>
-      </select>
-      <span class="console-filter-count" id="accountFilterCount">全部账号</span>
-      <button type="button" class="sec mini" onclick="clearAccountFilters()">清除筛选</button>
-      <span style="font-size:11px;color:var(--dim)">选中分组后，刷新、测试、补积分和启停都只作用于该分组</span>
-    </div>
+    <!-- 账号列表筛选条已移除：手机上下拉太难受。账号全部平铺列出，与旧版一致。 -->
     <div class="toolbar">
     <button onclick="openLoginModal()">添加</button>
     <!-- 静态 API Key 是另一条并行入口：CodeBuddy 的登录页不支持企业微信扫码，
