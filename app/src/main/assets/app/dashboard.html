@@ -5162,12 +5162,16 @@ html, body{
 #nextBottomNav, #nextMoreSheet{ display:none !important; }
 
 /* ===== 手机端：模型清单改成两列并排 =====
-   原来每一行是一张卡片（display:grid + grid-column:span 6），一屏只放得下一两个，
-   手机上全是空白。这里把 #modelsTable 的卡片排成两列，卡片内部字段也收紧。
+   原来模型表每行是一张通栏卡片（display:grid + grid-column:span 6），
+   手机上一条模型占大半屏，全是空白。
 
-   为什么用 :has(.model-id-cell)：模型表的每一行都带模型 ID 单元格，
-   :has 只命中它，不会误伤账号表 / 限额表（那几张仍是单列）。
-   老 WebView 不支持 :has 时是"多一条无效规则"，排布回到原来的单列 —— 不会坏。 */
+   改成两列网格后踩过两个坑，都在这里处理掉：
+     ① 卡片被拉到一样高 —— 内容少的那张下半截全是空白。
+        用 align-items:start，让每张卡片按自己内容定高。
+     ② 值太长（思考档位写「默认 high · 不可关闭思考」）会把标签挤成竖排，
+        还把卡片撑得很高。给 td 加 flex-wrap:wrap + min-width:0，
+        标签永不断字，值放不下就整体换到下一行。
+   ≤400px 的小屏退回单列（两列反而更挤）。 */
 @media (max-width:860px){
   #modelsTable{ min-width:0 !important; display:block; }
   #modelsTable thead{ display:none; }
@@ -5175,38 +5179,105 @@ html, body{
     display:grid;
     grid-template-columns:repeat(2, minmax(0,1fr));
     gap:8px;
-    align-items:start;
+    align-items:start;          /* ← 各行按自己高度，不被拉齐 */
   }
   #modelsTable tr{
     display:grid !important;
-    grid-template-columns:repeat(6, minmax(0,1fr)) !important;
-    gap:2px 6px !important;
-    padding:9px 10px 10px !important;
+    grid-template-columns:1fr !important;   /* 卡片里每个字段一行 */
+    gap:0 !important;
+    padding:8px 9px 9px !important;
     margin:0 !important;
+    align-content:start !important;         /* ← 内容顶部对齐，底部不留空 */
     border-radius:10px !important;
   }
-  /* 卡片内每个字段单独一行，标签在左值在右 */
   #modelsTable td{
-    grid-column:span 6 !important;
-    padding:1px 0 !important;
+    display:flex !important;
+    flex-wrap:wrap !important;              /* ← 值太长就换行，不挤标签 */
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:3px 6px !important;
+    padding:2px 0 !important;
     font-size:11.5px !important;
-    gap:6px !important;
+    line-height:1.45 !important;
+    white-space:normal !important;          /* ← 允许换行，不竖排 */
+    min-width:0 !important;
+    border-bottom:0 !important;
   }
-  #modelsTable td::before{ font-size:10px !important; }
-  /* 模型 ID 一行可能很长，占满卡片宽度，超长省略 */
+  #modelsTable td::before{
+    font-size:10px !important;
+    flex:0 0 auto !important;
+    white-space:nowrap !important;          /* ← 标签永不断字 */
+  }
+  /* 值区域：可以换行、可以省略，但不把卡片撑爆 */
+  #modelsTable td > *:not(::before){
+    min-width:0;
+    max-width:100%;
+  }
+  /* 模型 ID 单行省略 */
+  #modelsTable td.model-id-cell label{ width:100%; min-width:0; }
   #modelsTable td.model-id-cell b{
-    display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    font-size:11.5px;
+    display:block; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; font-size:11.5px; min-width:0;
   }
-  /* 倍率胶囊、能力胶囊在小卡里缩小，避免溢出 */
-  #modelsTable td .pill, #modelsTable td .chip, #modelsTable td span[class*="pill"]{
+  /* 倍率 / 能力胶囊缩小 */
+  #modelsTable td .pill, #modelsTable td .chip,
+  #modelsTable td span[class*="pill"]{
     font-size:10px !important; padding:1px 5px !important;
+    white-space:nowrap !important;
   }
-  /* 极窄屏（小手机）退回单列，两列塞不下反而更乱 */
+  /* 卡片之间留白更紧凑，一屏能多看几个 */
+  #modelsTable tr + tr{ margin-top:0 !important; }
 }
 
 @media (max-width:400px){
   #modelsTable tbody{ grid-template-columns:1fr; }
+}
+
+
+/* ===== 手机端：下拉「滑轮」改成分段按钮 + 折叠块默认展开 =====
+   手机上 <select> 是原生滚轮选择器，选一次要点很多下。
+   这里把账号页那两个筛选（状态 / 分组）在窄屏替换成横排按钮：
+   按钮是同一份数据生成的，点了仍然写回原 select 并触发 onchange，
+   逻辑一行没改。
+
+   折叠块（details / .collapse）也一并默认展开 —— 手机上先展开再点
+   是两次操作。 */
+@media (max-width:860px){
+
+  /* 一、筛选区改成横向可滚的按钮条 */
+  .console-filterbar{
+    display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+  }
+  /* 窄屏把原生 select 藏掉，改用下面的按钮组 */
+  .console-filterbar select#accountStatusFilter,
+  .console-filterbar select#accountGroupFilter{
+    display:none !important;
+  }
+  .wb-seg{
+    display:inline-flex; flex-wrap:wrap; gap:5px;
+    width:100%;
+  }
+  .wb-seg button{
+    appearance:none; flex:0 0 auto;
+    padding:6px 11px; border-radius:999px;
+    border:1px solid var(--line); background:var(--panel2);
+    color:var(--dim); font:inherit; font-size:11.5px;
+    cursor:pointer; white-space:nowrap;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .wb-seg button.on{
+    background:var(--accent-soft); color:var(--accent);
+    border-color:var(--accent); font-weight:600;
+  }
+
+  /* 二、折叠块默认展开：details 全部打开 */
+  details{ open: 1; }
+  details > summary{ pointer-events:auto; }
+  details[open] > summary .disclosure-chevron{ transform:rotate(90deg); }
+
+  /* .collapse 这类由 JS 控制高度的区块：强制展开 */
+  .collapse{ max-height:none !important; overflow:visible !important; }
+  .collapse-inner{ max-height:none !important; overflow:visible !important; }
 }
 
 </style>
@@ -22264,6 +22335,69 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
     setTimeout(function(){ nextHideConflictingSettings(); nextHideLegacyHeaders(); }, 800);
   });
   nextSyncChrome(nextCurrentTab() || 'overview');
+})();
+</script>
+<script>
+/* 手机端：把账号页那两个筛选下拉换成横排按钮，并默认展开所有折叠块。
+   按钮与原 select 同步：点按钮 → 写 select.value → 派发 change 事件，
+   页面原有逻辑（ACCOUNT_FILTERS / renderAccounts）原样跑。 */
+(function(){
+  if(window.__wbSegBound) return;
+  window.__wbSegBound = 1;
+
+  function buildSeg(sel){
+    var el = document.getElementById(sel);
+    if(!el) return;
+    var bar = el.parentNode.querySelector('.wb-seg[data-for="' + sel + '"]');
+    if(!bar){
+      bar = document.createElement('div');
+      bar.className = 'wb-seg';
+      bar.setAttribute('data-for', sel);
+      el.parentNode.insertBefore(bar, el);
+    }
+    function render(){
+      bar.innerHTML = '';
+      Array.prototype.forEach.call(el.options, function(opt){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = opt.textContent;
+        if(opt.value === el.value) b.className = 'on';
+        b.onclick = function(){
+          el.value = opt.value;
+          el.dispatchEvent(new Event('change', {bubbles:true}));
+          render();
+        };
+        bar.appendChild(b);
+      });
+    }
+    render();
+    el.addEventListener('change', render);
+    // 分组列表是异步填的（loadAccounts 之后才有），这里盯着变化重建
+    try{
+      new MutationObserver(render).observe(el, {childList:true, subtree:true});
+    }catch(e){}
+  }
+
+  function init(){
+    buildSeg('accountStatusFilter');
+    buildSeg('accountGroupFilter');
+    // 折叠块默认展开
+    Array.prototype.forEach.call(document.querySelectorAll('details'), function(d){
+      d.open = true;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.collapse'), function(c){
+      c.style.maxHeight = 'none';
+      c.style.overflow = 'visible';
+    });
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(init, 600); });
+  } else {
+    setTimeout(init, 600);
+  }
+  // 账号列表异步渲染，隔一会儿再补一次
+  setTimeout(init, 2500);
 })();
 </script>
 </body>
