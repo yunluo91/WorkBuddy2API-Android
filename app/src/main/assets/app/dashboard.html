@@ -5160,6 +5160,55 @@ html, body{
 
 /* 底部导航已从 DOM 移除；这里再兜一层，防止任何残留样式把它撑出来 */
 #nextBottomNav, #nextMoreSheet{ display:none !important; }
+
+/* ===== 手机端：模型清单改成两列并排 =====
+   原来每一行是一张卡片（display:grid + grid-column:span 6），一屏只放得下一两个，
+   手机上全是空白。这里把 #modelsTable 的卡片排成两列，卡片内部字段也收紧。
+
+   为什么用 :has(.model-id-cell)：模型表的每一行都带模型 ID 单元格，
+   :has 只命中它，不会误伤账号表 / 限额表（那几张仍是单列）。
+   老 WebView 不支持 :has 时是"多一条无效规则"，排布回到原来的单列 —— 不会坏。 */
+@media (max-width:860px){
+  #modelsTable{ min-width:0 !important; display:block; }
+  #modelsTable thead{ display:none; }
+  #modelsTable tbody{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+    gap:8px;
+    align-items:start;
+  }
+  #modelsTable tr{
+    display:grid !important;
+    grid-template-columns:repeat(6, minmax(0,1fr)) !important;
+    gap:2px 6px !important;
+    padding:9px 10px 10px !important;
+    margin:0 !important;
+    border-radius:10px !important;
+  }
+  /* 卡片内每个字段单独一行，标签在左值在右 */
+  #modelsTable td{
+    grid-column:span 6 !important;
+    padding:1px 0 !important;
+    font-size:11.5px !important;
+    gap:6px !important;
+  }
+  #modelsTable td::before{ font-size:10px !important; }
+  /* 模型 ID 一行可能很长，占满卡片宽度，超长省略 */
+  #modelsTable td.model-id-cell b{
+    display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    font-size:11.5px;
+  }
+  /* 倍率胶囊、能力胶囊在小卡里缩小，避免溢出 */
+  #modelsTable td .pill, #modelsTable td .chip, #modelsTable td span[class*="pill"]{
+    font-size:10px !important; padding:1px 5px !important;
+  }
+  /* 极窄屏（小手机）退回单列，两列塞不下反而更乱 */
+}
+
+@media (max-width:400px){
+  #modelsTable tbody{ grid-template-columns:1fr; }
+}
+
 </style>
 </head>
 <body>
