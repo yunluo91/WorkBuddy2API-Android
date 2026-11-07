@@ -5157,6 +5157,9 @@ html, body{
   table{ max-width:100%; }
 }
 
+
+/* 底部导航已从 DOM 移除；这里再兜一层，防止任何残留样式把它撑出来 */
+#nextBottomNav, #nextMoreSheet{ display:none !important; }
 </style>
 </head>
 <body>
@@ -7534,28 +7537,7 @@ html, body{
     </div><!-- /nextContent -->
   </div><!-- /nextMain -->
 </div><!-- /nextShell -->
-<nav id="nextBottomNav" aria-label="手机导航">
-  <button type="button" class="next-bottom-item" data-next-tab="overview" onclick="nextGo('overview')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-    <span>总览</span>
-  </button>
-  <button type="button" class="next-bottom-item" data-next-tab="gateway" onclick="nextGo('gateway')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z"/></svg>
-    <span>网关</span>
-  </button>
-  <button type="button" class="next-bottom-item" data-next-tab="accounts" onclick="nextGo('accounts')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.4-3.2 2.4-5 5.5-5s5.1 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.5c2.7.2 4.3 1.8 4.8 4.5"/></svg>
-    <span>账号</span>
-  </button>
-  <button type="button" class="next-bottom-item" data-next-tab="analytics" onclick="nextGo('analytics')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/></svg>
-    <span>用量</span>
-  </button>
-  <button type="button" class="next-bottom-item" id="nextMoreBtn" onclick="nextOpenMore(true)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
-    <span>更多</span>
-  </button>
-</nav>
+<!-- 手机底部导航已移除：App 自己有底栏，看板里切分区用左上角 ☰ 侧栏。 -->
 <div id="nextMoreSheet" class="next-more-sheet" aria-hidden="true">
   <div class="next-more-backdrop" onclick="nextOpenMore(false)"></div>
   <div class="next-more-panel" role="dialog" aria-label="更多导航">
