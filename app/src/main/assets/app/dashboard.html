@@ -5404,6 +5404,34 @@ html, body{
     text-overflow:ellipsis !important;
   }
 }
+
+/* ===== 侧栏遮罩：点右侧空白必须能关 =====
+   遮罩元素本身有 onclick="nextOpenSidebar(false)"，
+   但它的层级不够 —— 被页面内容盖住，点击落在内容上，侧栏关不掉。
+
+   这里把遮罩抬到内容之上、侧栏之下：
+     遮罩 2147482850 < 侧栏 2147482900 < 密码门 2147483000
+   宽度铺满整屏，右边那块空白才真的能点。 */
+@media (max-width:860px){
+  #nextSidebarBackdrop,
+  .next-sidebar-backdrop{
+    display:block !important;
+    position:fixed !important;
+    inset:0 !important;
+    z-index:2147482850 !important;
+    background:rgba(0,0,0,.5) !important;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease;
+  }
+  body.next-sidebar-open #nextSidebarBackdrop,
+  body.next-sidebar-open .next-sidebar-backdrop{
+    opacity:1 !important;
+    pointer-events:auto !important;
+  }
+  /* 侧栏压在遮罩上面 */
+  #nextSidebar{ z-index:2147482900 !important; }
+}
 </style>
 </head>
 <body>
@@ -22536,6 +22564,34 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
     new MutationObserver(function(){ if(isNarrow()) scan(); })
       .observe(document.body, {childList:true, subtree:true});
   }catch(e){}
+})();
+</script>
+<script>
+/* 点侧栏以外的任何地方都关掉侧栏。
+   遮罩本身有 onclick，但层级/命中偶尔会失效（被别的东西压住），
+   这里在 document 捕获阶段再兜一层：只要不是点在侧栏内部、也不是点 ☰，就关。 */
+(function(){
+  if(window.__wbSidebarAway2) return;
+  window.__wbSidebarAway2 = 1;
+  document.addEventListener('click', function(e){
+    try{
+      if(!document.body.classList.contains('next-sidebar-open')) return;
+      var t = e.target;
+      if(!t || !t.closest) return;
+      if(t.closest('#nextSidebar')) return;          /* 侧栏内部不关 */
+      if(t.closest('#nextMenuBtn')) return;          /* ☰ 自己 toggle */
+      if(typeof window.nextOpenSidebar === 'function') window.nextOpenSidebar(false);
+      else document.body.classList.remove('next-sidebar-open');
+    }catch(err){}
+  }, true);
+  /* Esc 也关 */
+  document.addEventListener('keydown', function(e){
+    if((e.key === 'Escape' || e.keyCode === 27) &&
+       document.body.classList.contains('next-sidebar-open')){
+      if(typeof window.nextOpenSidebar === 'function') window.nextOpenSidebar(false);
+      else document.body.classList.remove('next-sidebar-open');
+    }
+  }, true);
 })();
 </script>
 </body>
