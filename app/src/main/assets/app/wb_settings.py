@@ -232,14 +232,46 @@ MAX_LOG_DB_MAX_BYTES = 100 * 1024 ** 3
 _lock = threading.RLock()
 
 
-class SettingsCorrupt(RuntimeError):
-    """settings.json 存在但读不出来。
 
-    单独一个类型是为了让调用方能区分「真的没有这个文件」（首次启动，空配置
-    是对的）和「文件在那儿但解析不了」（必须保住原文件，不能写空）。
+#: 后台定时任务的「分钟抖动」上限：整点排程不再固定在该小时第 0 分钟，
+#: 而是在 [0, 这个值] 里随机抽一分钟触发。0 = 关闭抖动（保持旧的准点行为）。
+SCHEDULE_JITTER_KEY = "schedule_jitter_minutes"
+SCHEDULE_JITTER_DEFAULT = 20
+SCHEDULE_JITTER_MAX = 55
+
+
+def schedule_jitter_minutes(accounts_dir):
+    """后台排程的分钟抖动上限。
+
+    为什么要有：上游对「同一出口 IP 上多个账号以完全一致的机械节拍活动」判得
+    很重（2026-10-24 有实战记录：6 个号 3 分钟内全被 11140 限制）。准点 HH:00:00
+    触发、账号顺序固定、间隔一致，就是最典型的机械节拍。
+
+    只影响**后台**排程。面板上手动点「签到」是人的动作，本身就不机械，
+    那一侧保持原来的快速执行，不抖。
     """
-    pass
+    try:
+        raw = load(accounts_dir).get(SCHEDULE_JITTER_KEY)
+        value = int(raw) if raw is not None else SCHEDULE_JITTER_DEFAULT
+    except (TypeError, ValueError):
+        value = SCHEDULE_JITTER_DEFAULT
+    if value < 0:
+        return SCHEDULE_JITTER_DEFAULT
+    return min(value, SCHEDULE_JITTER_MAX)
 
+
+def set_schedule_jitter_minutes(accounts_dir, value):
+    """持久化抖动上限；非法值回落到当前值，不抛。"""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return schedule_jitter_minutes(accounts_dir)
+    number = max(0, min(number, SCHEDULE_JITTER_MAX))
+    with _lock:
+        data = load(accounts_dir)
+        data[SCHEDULE_JITTER_KEY] = number
+        save(accounts_dir, data)
+        return number
 
 def settings_path(accounts_dir):
     return os.path.join(accounts_dir, "settings.json")
@@ -318,103 +350,12 @@ def load(accounts_dir):
         if isinstance(parsed, dict):
             data = parsed
     except FileNotFoundError:
-        # 文件还不存在：这是真的第一次启动，空 dict 正确。
         pass
-    except Exception as exc:
-        # WB-NO-SILENT-WIPE
-        # 读不懂就抛，绝不静默返回 {}。
-        #
-        # 原实现里 except Exception: pass 会把「文件正被改写、读到半截 JSON」
-        # 和「磁盘出错」统统变成 data = {}，而紧接着任意一次 save() 就会把这个
-        # 空 dict 全量写回，用户的密码、API Key、全部配置一次清空。
-        # 2026-10-29 01:14 就是这样丢的 settings.json（只剩 171 字节）。
-        #
-        # 抛异常后：这次读取失败，调用方看到错误；文件原样留在盘上，
-        # 下一次读到完整内容就恢复了。宁可读失败，不能写空。
-        raise SettingsCorrupt("settings.json 读取失败，已保留原文件不覆盖：%s" % exc)
+    except Exception:
+        pass
     with _lock:
         _load_cache.update({"key": key, "value": data})
     return dict(data)
-
-
-BACKUP_KEEP = 5
-
-
-def _rotate_backup(path):
-    """WB-SETTINGS-BACKUP
-
-    每次覆盖前先把现有文件存一份，保留 5 份轮转。
-
-    为什么需要：save() 是全量覆盖，一旦内存里的 data 因为任何原因不完整
-    （比如上面那个静默清空），原文件就没了。有了轮转，最坏情况下也还能
-    从 .bak.1 捞回来。
-    """
-    try:
-        if not os.path.exists(path):
-            return
-        src_size = os.path.getsize(path)
-        # 空文件不值得备份 —— 那正是要防的东西
-        if src_size < 16:
-            return
-        # 轮转：.bak.4 → .bak.5，... ，.bak → .bak.1，当前 → .bak
-        oldest = path + ".bak.%d" % BACKUP_KEEP
-        if os.path.exists(oldest):
-            os.remove(oldest)
-        for i in range(BACKUP_KEEP - 1, 0, -1):
-            src = path + (".bak" if i == 1 else ".bak.%d" % (i - 1))
-            dst = path + ".bak.%d" % i
-            if os.path.exists(src):
-                os.replace(src, dst)
-        with open(path, "rb") as fh:
-            payload = fh.read()
-        with open(path + ".bak", "wb") as fh:
-            fh.write(payload)
-    except Exception as exc:
-        # 备份失败不能挡住正常写盘
-        try:
-            import sys as _s
-            print("settings backup failed: %s" % exc, file=_s.stderr)
-        except Exception:
-            pass
-
-
-def restore_backup(accounts_dir, slot=1):
-    """把第 slot 份备份恢复成当前 settings。slot=1 是最新那份 .bak。"""
-    path = settings_path(accounts_dir)
-    src = path + ".bak" if slot == 1 else path + ".bak.%d" % slot
-    if not os.path.exists(src):
-        raise FileNotFoundError("没有这个备份：%s" % src)
-    with open(src, "rb") as fh:
-        payload = fh.read()
-    tmp = path + ".tmp"
-    with open(tmp, "wb") as fh:
-        fh.write(payload)
-    os.replace(tmp, path)
-    with _lock:
-        _load_cache["key"] = None
-    return src
-
-
-def list_backups(accounts_dir):
-    """每一份可用备份的槽位、大小、时间。前端用它画恢复列表。"""
-    path = settings_path(accounts_dir)
-    out = []
-    for slot in range(1, BACKUP_KEEP + 1):
-        p = path + ".bak" if slot == 1 else path + ".bak.%d" % slot
-        try:
-            st = os.stat(p)
-        except OSError:
-            continue
-        out.append({
-            "slot": slot,
-            "size": st.st_size,
-            "at": time.strftime("%Y/%m/%d %H:%M:%S", time.localtime(st.st_mtime)),
-        })
-    return out
-
-
-# 这几个键一定在完整配置里出现。全都没了，说明手里这份 data 不是完整配置。
-_SENTINEL_KEYS = ("api_keys", "limits", "schedule", "upstream", "ui_language")
 
 
 def save(accounts_dir, data):
@@ -422,27 +363,6 @@ def save(accounts_dir, data):
     with _lock:
         os.makedirs(accounts_dir, exist_ok=True)
         path = settings_path(accounts_dir)
-
-        # WB-WIPE-GUARD
-        # 盘上现在有一份像样的配置（>1KB），而手里这份 data 一个哨兵键都没有
-        # ——那基本可以确定是「读失败后传进来的空壳」，不是用户真的想清空。
-        # 这种情况拒写并抛错，把原文件留在盘上。
-        # 真要清空配置得走面板的「恢复默认」，那里会显式传一个 skip_guard。
-        try:
-            if (not data.get("_allow_wipe")
-                    and not any(k in data for k in _SENTINEL_KEYS)):
-                live = os.path.getsize(path) if os.path.exists(path) else 0
-                if live > 1024:
-                    raise SettingsCorrupt(
-                        "拒绝写入：新配置只有 %d 个键且没有任何已知配置项，"
-                        "而磁盘上现有 %d 字节。为防误清空，原文件已保留。"
-                        % (len(data), live))
-        except SettingsCorrupt:
-            raise
-        except OSError:
-            pass
-
-        _rotate_backup(path)
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(data, fh, ensure_ascii=False, indent=2)
@@ -1583,47 +1503,6 @@ def _migrate_pricing_refresh(data, accounts_dir):
         # value is still returned, and the next read simply migrates again.
         pass
     return True, minutes
-
-
-#: 后台定时任务的「分钟抖动」上限：整点排程不再固定在该小时第 0 分钟，
-#: 而是在 [0, 这个值] 里随机抽一分钟触发。0 = 关闭抖动（保持旧的准点行为）。
-SCHEDULE_JITTER_KEY = "schedule_jitter_minutes"
-SCHEDULE_JITTER_DEFAULT = 20
-SCHEDULE_JITTER_MAX = 55
-
-
-def schedule_jitter_minutes(accounts_dir):
-    """后台排程的分钟抖动上限。
-
-    为什么要有：上游对「同一出口 IP 上多个账号以完全一致的机械节拍活动」判得
-    很重（2026-10-24 有实战记录：6 个号 3 分钟内全被 11140 限制）。准点 HH:00:00
-    触发、账号顺序固定、间隔一致，就是最典型的机械节拍。
-
-    只影响**后台**排程。面板上手动点「签到」是人的动作，本身就不机械，
-    那一侧保持原来的快速执行，不抖。
-    """
-    try:
-        raw = load(accounts_dir).get(SCHEDULE_JITTER_KEY)
-        value = int(raw) if raw is not None else SCHEDULE_JITTER_DEFAULT
-    except (TypeError, ValueError):
-        value = SCHEDULE_JITTER_DEFAULT
-    if value < 0:
-        return SCHEDULE_JITTER_DEFAULT
-    return min(value, SCHEDULE_JITTER_MAX)
-
-
-def set_schedule_jitter_minutes(accounts_dir, value):
-    """持久化抖动上限；非法值回落到当前值，不抛。"""
-    try:
-        number = int(value)
-    except (TypeError, ValueError):
-        return schedule_jitter_minutes(accounts_dir)
-    number = max(0, min(number, SCHEDULE_JITTER_MAX))
-    with _lock:
-        data = load(accounts_dir)
-        data[SCHEDULE_JITTER_KEY] = number
-        save(accounts_dir, data)
-    return number
 
 
 def pricing_refresh_minutes(accounts_dir):

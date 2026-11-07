@@ -639,51 +639,8 @@ def realm_evidence(token, domain=None):
         return "intl"
     return None
 
-def detect_realm_from_token(token, domain=None, default=None):
-    """从 token / 域名里看区域；看不出时返回 default（默认 None）。
-
-    WB-REALM-FIX
-    这里以前写的是 `realm_evidence(token, domain) or "intl"`，
-    跟 realm_evidence 自己的 docstring「看不出返回 None（不要瞎猜成 intl）」
-    直接矛盾。
-
-    后果：国内版账号只要 issuer 不含 CN_REALM_MARKERS
-    （新域名、空 issuer、非 JWT 的静态凭据都会这样），
-    就会被静默判成国际版 —— 出站请求打到错区域的域名，
-    限额与用量按区域统计也串区。
-
-    现在默认返回 None，由调用方决定兜底成什么。
-    """
-    evidence = realm_evidence(token, domain)
-    if evidence:
-        return evidence
-    return default if default in ("cn", "intl") else None
-
-
-def _fallback_realm(accounts_dir=None):
-    """完全没有 token / domain 证据时的兜底区域。
-
-    WB-REALM-FIX
-    优先级：
-      ① 账号目录下 active_realm.json（面板上的当前选择）
-      ② WB_PROXY_DEFAULT_REALM 环境变量
-      ③ "intl"（保持旧默认，但前两级让给用户的明确选择）
-
-    任何一步读失败都继续往下，不让坏文件卡住账号加载。
-    """
-    if accounts_dir:
-        try:
-            import json as _json
-            path = os.path.join(accounts_dir, "active_realm.json")
-            if os.path.isfile(path):
-                with open(path, "r", encoding="utf-8") as fh:
-                    realm = str(_json.load(fh).get("realm") or "").strip().lower()
-                if realm in ("cn", "intl"):
-                    return realm
-        except Exception:
-            pass
-    realm = str(os.environ.get("WB_PROXY_DEFAULT_REALM") or "").strip().lower()
-    return realm if realm in ("cn", "intl") else "intl"
+def detect_realm_from_token(token, domain=None):
+    return realm_evidence(token, domain) or "intl"
 
 def domain_for_realm(realm, domain):
     """把域名对齐到区域：域名写着另一个区域时换成该区域的规范域名。
@@ -955,36 +912,12 @@ class Account(object):
         else:
             self.nickname = ""
         self.domain = str(data.get("domain") or "")
-        # WB-REALM-FIX
-        # 判定顺序（从强到弱）：
-        #   ① 账号 JSON 里显式的 realm —— 用户/导入时的明确意图
-        #   ② token 的 issuer 证据 —— 最可靠的运行时事实
-        #   ③ domain 的区域证据 —— 次可靠，与 token 冲突时以 token 为准
-        #   ④ 账号目录下的 active_realm.json / 环境变量 —— 面板上的当前选择
-        #   ⑤ intl（最后兜底）
-        #
-        # 旧版是 `data.get("realm") or detect_realm_from_token(...)`，
-        # 而 detect_realm_from_token 内部又 `or "intl"`，
-        # 于是「没有任何证据」被静默当成「国际版」——
-        # 国内账号因此被判错，出站端点和限额统计全串区。
         if self.is_api_key:
-            # 静态 Key 只在国内版出口有效（国际版不认这套签发），
-            # 落盘写着 intl 也不能照单全收 ——
-            # 那会让每个请求打到不支持它的上游。
+            # 静态 Key 只在国内版出口有效（国际版不认这套签发），落盘写着
+            # intl 也不能照单全收——那会让每个请求打到不支持它的上游。
             self.realm = "cn"
-            self.realm_source = "api_key"
         else:
-            explicit = str(data.get("realm") or "").strip().lower()
-            evidence = realm_evidence(token, self.domain)
-            if explicit in ("cn", "intl"):
-                self.realm = explicit
-                self.realm_source = "explicit"
-            elif evidence:
-                self.realm = evidence
-                self.realm_source = "evidence"
-            else:
-                self.realm = _fallback_realm(self.accounts_dir or None)
-                self.realm_source = "fallback"
+            self.realm = str(data.get("realm") or detect_realm_from_token(token, self.domain))
         if not self.domain:
             self.domain = get_realm_config(self.realm)["domain"]
         self.platform = str(data.get("platform") or "CLI")
@@ -1748,7 +1681,6 @@ class Account(object):
         now = time.time() if now is None else now
         return sorted(mid for mid in self.model_caps
                       if self.cap_until(mid, now) > 0)
-
 
     def restore_model_caps(self, now=None):
         """重启后把仍在恢复时间内的 6004 重新挂成模型冷却。
@@ -4282,59 +4214,6 @@ NON_ACCOUNT_FILES = ("settings.json", "active_realm.json", "model_windows.json",
 
 
 class AccountPool(object):
-
-    def repair_realm(self):
-        """按当前证据重新判定每个账号的 realm，判错的回写。
-
-        WB-REALM-REPAIR
-
-        为什么需要这个：
-        旧版 detect_realm_from_token 会把「看不出证据」静默兜底成 intl，
-        于是国内账号被写进了 intl。判定逻辑修好之后，那些已经落盘的
-        realm="intl" 不会自己变回来 —— 因为它现在是"显式值"，
-        在判定顺序里优先级最高。必须主动重算一次。
-
-        只在**证据明确**时才改：token / domain 给不出结论的账号
-        保持原样（那本来就无从判断，改了等于瞎猜）。
-
-        返回 {uid: (旧, 新)}，调用方可据此打日志或提示。
-        """
-        changed = {}
-        with self._lock:
-            for account in self.accounts:
-                # API Key 恒为 cn，不需要重算
-                if getattr(account, "is_api_key", False):
-                    continue
-                evidence = realm_evidence(account.access_token, account.domain)
-                if not evidence:
-                    # 没证据，保持原样
-                    continue
-                old = str(getattr(account, "realm", "") or "").lower()
-                if old == evidence:
-                    continue
-                account.realm = evidence
-                account.realm_source = "evidence"
-                # domain 也跟着对齐：域名写着另一个区域时换成该区域的规范域名，
-                # 否则出站请求的 X-Domain 头还会把请求带回错的那边。
-                try:
-                    account.domain = domain_for_realm(evidence, account.domain)
-                except Exception:
-                    pass
-                changed[account.uid] = (old, evidence)
-                if self.log:
-                    self.log("账号 %s 区域从 %s 纠正为 %s（token 证据）"
-                             % (account.uid[:8], old or "?", evidence))
-        # 落盘放在锁外：save 自己有一把 per-account 锁
-        for uid, (_old, new) in changed.items():
-            account = self.get(uid)
-            if account is None:
-                continue
-            try:
-                account.save(self.dir)
-            except Exception as exc:
-                if self.log:
-                    self.log("账号 %s 区域纠正后写盘失败: %s" % (uid[:8], exc))
-        return changed
     def __init__(self, directory, log=None):
         self.dir = directory
         self.log = log or (lambda msg: None)
@@ -4364,6 +4243,53 @@ class AccountPool(object):
         # uid 排序表的缓存：池成员没变就直接复用，变了重建（见 _page_ranks）。
         self._page_order_cache = None
         self.affinity = SessionAffinity()
+
+    def repair_realm(self):
+        """按当前证据重新判定每个账号的 realm，判错的回写。
+
+        WB-REALM-REPAIR
+
+        为什么需要这个：
+        旧版 detect_realm_from_token 会把「看不出证据」静默兜底成 intl，
+        于是国内账号被写进了 intl。判定逻辑修好之后，那些已经落盘的
+        realm="intl" 不会自己变回来 —— 因为它现在是"显式值"，
+        在判定顺序里优先级最高。必须主动重算一次。
+
+        只在**证据明确**时才改：token / domain 给不出结论的账号
+        保持原样（那本来就无从判断，改了等于瞎猜）。
+
+        返回 {uid: (旧, 新)}，调用方可据此打日志或提示。
+        """
+        changed = {}
+        with self._lock:
+            for account in self.accounts:
+                if getattr(account, "is_api_key", False):
+                    continue
+                evidence = realm_evidence(account.access_token, account.domain)
+                if not evidence:
+                    continue
+                old = str(getattr(account, "realm", "") or "").lower()
+                if old == evidence:
+                    continue
+                account.realm = evidence
+                try:
+                    account.domain = domain_for_realm(evidence, account.domain)
+                except Exception:
+                    pass
+                changed[account.uid] = (old, evidence)
+                if self.log:
+                    self.log("账号 %s 区域从 %s 纠正为 %s（token 证据）"
+                             % (account.uid[:8], old or "?", evidence))
+        for uid, (_old, new) in changed.items():
+            account = self.get(uid)
+            if account is None:
+                continue
+            try:
+                account.save(self.dir)
+            except Exception as exc:
+                if self.log:
+                    self.log("账号 %s 区域纠正后写盘失败: %s" % (uid[:8], exc))
+        return changed
 
     def load(self):
         with self._lock:
@@ -5830,8 +5756,6 @@ def normalise_import_row(row, realm=None):
         forced = "cn"
     evidence = realm_evidence(token, pick("domain"))
     row_realm = str(pick("realm") or "").strip().lower()
-    # WB-REALM-FIX 预先初始化，避免只有 else 分支赋值时其他分支 NameError
-    realm_guessed = False
     if forced in ("intl", "cn"):
         detected = forced
     elif evidence:
@@ -5839,15 +5763,7 @@ def normalise_import_row(row, realm=None):
     elif row_realm in ("intl", "cn"):
         detected = row_realm
     else:
-        # WB-REALM-FIX
-        # detect_realm_from_token 现在看不出证据时返回 None（不再静默猜 intl）。
-        # 导入路径已经试过 forced / evidence / row_realm 三级，
-        # 走到这里说明三级都没有 —— 那就跟随当前区域，并在返回值里
-        # 标记 realm_guessed，让面板能提示用户确认。
         detected = detect_realm_from_token(token, pick("domain"))
-        if detected not in ("cn", "intl"):
-            detected = _fallback_realm(ACCOUNTS_DIR if "ACCOUNTS_DIR" in globals() else None)
-            realm_guessed = True
     cfg = get_realm_config(detected)
 
     raw_uid = str(pick("uid") or "").strip() or jwt_uid(token)
@@ -5860,7 +5776,7 @@ def normalise_import_row(row, realm=None):
         raise ValueError("cannot determine uid (no uid field and no sub claim)")
 
     tasks_enabled = pick("tasksEnabled")
-    result = {
+    return {
         "uid": uid,
         "nickname": str(pick("nickname") or ""),
         "domain": domain_for_realm(detected, pick("domain")),
@@ -5882,10 +5798,3 @@ def normalise_import_row(row, realm=None):
         "lastError": "",
         "cooldownUntil": 0.0,
     }
-    if realm_guessed:
-        # WB-REALM-FIX
-        # 区域是猜的（token / domain / 行里的 realm 都给不出证据）。
-        # 不阻断导入，但要标出来，让面板能提示用户确认，
-        # 免得又把国内账号静默放进国际版列表。
-        result["realmGuessed"] = True
-    return result

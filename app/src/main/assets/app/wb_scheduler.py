@@ -93,7 +93,7 @@ def keepalive_due(expires_at, now=None, lead=None):
 class Scheduler:
     def __init__(self, pool):
         self.pool = pool
-        # 默认排程按 CST 24 小时制；实际值从
+        # 默认排程对齐 Sliverkiss/workbuddy2api (CST 24小时制)；实际值从
         # settings.json 的 schedule 段读取，缺省 / 非法回落这些默认值。
         self.checkin_hours = [9, 21]     # 每日 09:00、21:00 签到
         self.travel_hours = [9, 21]      # 每日 09:00 派出、21:00 领奖闭环
@@ -209,6 +209,7 @@ class Scheduler:
                     except Exception as exc:
                         self.log(f"网页活跃排程执行异常: {exc}")
                     time.sleep(35)
+                # 到达设定的整点前 1 分钟内触发
                 # 后台排程触发点：不再固定在整点第 0 分钟。
                 # 上游按「机械节拍」判风控，准点 HH:00:00 是最容易识别的特征之一，
                 # 所以每小时进到这一小时时先随机抽一个目标分钟，抽到哪分钟就哪分钟跑。
@@ -382,6 +383,14 @@ class Scheduler:
             t_struct = time.struct_time((now_tom.tm_year, now_tom.tm_mon, now_tom.tm_mday, first_h, 0, 0, 0, 0, -1))
         self.next_run_time = time.strftime("%Y-%m-%d %H:%M:%S", t_struct)
 
+    def trigger_now(self):
+        """手动立即触发一次调度检查。"""
+        if self._run_lock.locked():
+            return {"ok": False, "msg": "已有巡检正在执行，请稍候再试"}
+        threading.Thread(target=self._execute_cycle,
+                         args=("手动立即触发", True), daemon=True).start()
+        return {"ok": True, "msg": "已触发后台调度执行"}
+
     def _hour_target_minute(self, hour):
         """这一小时里，后台排程该在第几分钟跑。
 
@@ -404,26 +413,18 @@ class Scheduler:
                          % (self._hour_target_minute_value, span))
         return getattr(self, "_hour_target_minute_value", 0)
 
-    def trigger_now(self):
-        """手动立即触发一次调度检查。"""
-        if self._run_lock.locked():
-            return {"ok": False, "msg": "已有巡检正在执行，请稍候再试"}
-        threading.Thread(target=self._execute_cycle,
-                         args=("手动立即触发", True), daemon=True).start()
-        return {"ok": True, "msg": "已触发后台调度执行"}
-
     def _execute_cycle(self, trigger_reason="周期巡检", force=False,
-                       daily_chat_only=False):
+                       daily_chat_only=False, background=False):
         if not self._run_lock.acquire(blocking=False):
             self.log(f"跳过本次巡检 ({trigger_reason})：上一轮仍在执行")
             return
         try:
-            self._run_cycle(trigger_reason, force, daily_chat_only)
+            self._run_cycle(trigger_reason, force, daily_chat_only, background)
         finally:
             self._run_lock.release()
 
     def _run_cycle(self, trigger_reason="周期巡检", force=False,
-                   daily_chat_only=False):
+                   daily_chat_only=False, background=False):
         self.last_run_time = time.strftime("%Y-%m-%d %H:%M:%S")
         self.log(f"开始执行任务 ({trigger_reason})...")
 
@@ -468,21 +469,17 @@ class Scheduler:
         else:
             self._daily_activity_notice = False
 
-        # 后台排程打乱账号顺序：池子顺序天天一样本身也是可识别的节拍。
-        # 手动触发（面板点签到）保持原顺序 —— 人点的时候要看得懂谁在跑。
-        if background and len(accounts) > 1:
+        # 后台排程：打乱账号顺序，避免「每天同一个账号先动、间隔一致」的机械节拍。
+        # 手动触发（面板上点签到）保持原顺序与短间隔，人点出来的动作不需要打散。
+        if background:
             accounts = random.sample(accounts, len(accounts))
-
         for idx, acc in enumerate(accounts):
             if idx > 0:
-                # 账号间隔：
-                #   后台 → 20~120 秒随机。慢是代价，但这是让一组账号看起来像
-                #          几个人分别操作的关键；后台任务慢几分钟无所谓。
-                #   手动 → 保持 2~5 秒。点了要立刻看到结果，人点的动作不机械。
-                if background:
-                    time.sleep(random.uniform(20.0, 120.0))
-                else:
-                    time.sleep(random.uniform(2.0, 5.0))
+                # 账号间随机错峰防并发风控（2~5秒浮动延时，issue #394）
+                # 后台排程间隔拉长到 20~120 秒：同一出口 IP 上多个账号短间隔连续活动
+                # 是最典型的机械节拍特征（2026-10-24 有 6 个号 3 分钟内全被 11146 限制的记录）。
+                # 手动触发仍是 2~5 秒，点了要立刻出结果。
+                time.sleep(random.uniform(20.0, 120.0) if background else random.uniform(2.0, 5.0))
             uid8 = acc.uid[:8] if acc.uid else "?"
             # 上游账号级风控限制（403 / code 11140）中的账号一律跳过：无人值守
             # 的巡检/打卡再去「试探」一次，只会让同一台设备上的其他账号连坐。

@@ -1759,74 +1759,62 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
 }
 </style>
 <style>
-/* ===== 手机端修复：☰ 脱离文档流 + 密码门盖住侧栏 ===== */
+/* ===== 侧栏（按新版规则）===== */
+#nextSidebar, #nextSidebarBackdrop{ display:none !important; }
 
-/* 宽屏完全隐藏 ☰ */
-#nextMenuBtn{display:none!important}
+/* ☰：新版写的是 display:none，窄屏才 inline-flex */
+#nextMenuBtn{ display:none !important; }
 
 @media (max-width:860px){
-  /* ☰ 固定在左上角，不占 header 任何横向空间。
-     z-index 30：高于 header(10) 与正文，低于弹窗(100)、密码门、侧栏遮罩/侧栏。 */
   #nextMenuBtn{
-    display:inline-flex!important;
-    position:fixed!important;
-    left:12px!important;
-    top:calc(env(safe-area-inset-top, 0px) + 10px)!important;
-    z-index:30!important;
-    width:34px!important; height:34px!important;
-    align-items:center!important; justify-content:center!important;
-    padding:0!important; margin:0!important;
-    border-radius:10px!important;
-    background:var(--panel)!important;
-    border:1px solid var(--line)!important;
-    color:var(--fg)!important;
-    box-shadow:var(--shadow-sm)!important;
-    cursor:pointer!important;
-    -webkit-tap-highlight-color:transparent!important;
+    display:inline-flex !important;
+    align-items:center !important; justify-content:center !important;
+    width:34px !important; height:34px !important; flex:0 0 34px !important;
+    padding:0 !important; margin:0 !important;
+    border-radius:9px !important;
+    background:var(--panel2) !important;
+    border:1px solid var(--line) !important;
+    color:var(--fg) !important;
+    cursor:pointer !important;
+    -webkit-tap-highlight-color:transparent !important;
   }
-  #nextMenuBtn svg{display:block!important}
-  #nextMenuBtn:active{background:var(--panel2)!important}
+  #nextMenuBtn svg{ width:17px !important; height:17px !important; display:block !important; }
+  /* 密码门可见时隐藏 ☰（用类，inline style 压不过上面的 !important） */
+  #nextMenuBtn.next-gate-hidden{ display:none !important; }
 
-  /* 密码门可见时由 JS 给 ☰ 加这个类。
-     用类而不是 inline style：窄屏那条 display:inline-flex!important 会压过 inline 的 display:none。 */
-  #nextMenuBtn.next-gate-hidden{display:none!important}
+  /* 顶部那排页签在手机上换成侧栏 */
+  .main-nav{ display:none !important; }
 
-  /* h1 让出 ☰ 的位置。只作用于 header 里的 h1，数据看板的 h1.pagetitle 不受影响。 */
-  header h1{padding-left:44px!important}
-
-  /* 密码门永远盖在侧栏之上：门可见时用户只看到登录框 */
-  #panelGate{z-index:2147483000!important}
-
-  /* 旧顶栏页签在手机上让位给侧栏 */
-  .main-nav{display:none!important}
-
+  /* 抽屉 */
   #nextSidebar{
-    display:flex!important; flex-direction:column!important;
-    position:fixed!important; left:0!important; top:0!important; bottom:0!important;
-    width:250px!important; max-width:80vw!important;
-    padding:calc(env(safe-area-inset-top, 0px) + 16px) 12px 12px!important;
-    background:var(--panel)!important;
-    border-right:1px solid var(--line)!important;
-    box-shadow:0 10px 30px rgba(0,0,0,.5)!important;
-    z-index:2147482900!important;
-    transform:translateX(-104%)!important;
-    transition:transform .22s ease!important;
-    overflow-y:auto!important; overscroll-behavior:contain!important;
+    display:flex !important; flex-direction:column !important;
+    position:fixed !important; left:0 !important; top:0 !important; bottom:0 !important;
+    width:250px !important; max-width:80vw !important;
+    padding:calc(env(safe-area-inset-top, 0px) + 16px) 12px 12px !important;
+    background:var(--panel) !important;
+    border-right:1px solid var(--line) !important;
+    box-shadow:0 10px 30px rgba(0,0,0,.5) !important;
+    z-index:2147482900 !important;
+    transform:translateX(-104%) !important;
+    transition:transform .22s ease !important;
+    overflow-y:auto !important; overscroll-behavior:contain !important;
   }
-  body.next-sidebar-open #nextSidebar{transform:translateX(0)!important}
+  body.next-sidebar-open #nextSidebar{ transform:translateX(0) !important; }
 
+  /* 遮罩 */
   #nextSidebarBackdrop{
-    display:block!important;
-    position:fixed!important; inset:0!important;
-    z-index:2147482850!important;
-    background:rgba(0,0,0,.5)!important;
-    opacity:0!important; pointer-events:none!important;
-    transition:opacity .2s ease!important;
+    display:block !important;
+    position:fixed !important; inset:0 !important;
+    z-index:2147482850 !important;
+    background:rgba(0,0,0,.5) !important;
+    opacity:0 !important; pointer-events:none !important;
+    transition:opacity .2s ease !important;
   }
-  body.next-sidebar-open #nextSidebarBackdrop{opacity:1!important; pointer-events:auto!important}
-}
+  body.next-sidebar-open #nextSidebarBackdrop{ opacity:1 !important; pointer-events:auto !important; }
 
-#nextSidebar, #nextSidebarBackdrop{ display:none !important; }
+  /* 密码门盖在侧栏之上 */
+  #panelGate{ z-index:2147483000 !important; }
+}
 
 #nextSidebar .next-brand{ display:flex !important; align-items:center !important; gap:10px !important; padding:2px 8px 18px !important; }
 #nextSidebar .next-brand-mark{
@@ -4485,8 +4473,7 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
 </script>
 </head>
 <body>
-<!-- 手机端导航开关：脱离 header 文档流，固定在视口左上角，不占 header 横向空间。 -->
-<button type="button" id="nextMenuBtn" aria-label="打开导航" aria-controls="nextSidebar" aria-expanded="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+
 
 <div id="nextSidebarBackdrop" class="next-sidebar-backdrop"></div>
 
@@ -4530,6 +4517,10 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
 
 <header>
   <div class="header-left" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+    <button type="button" id="nextMenuBtn" class="next-menu-btn" onclick="nextOpenSidebar()" aria-label="打开导航">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+
     
     <!-- WB-SIGNATURE
          「WorkBuddy 网关」右边的小署名。
@@ -19540,142 +19531,85 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
 
 
 <script>
-/* ===== 侧栏：开合、切页、当前项高亮 =====
-   不依赖 html[data-ui]、不抢已有 IIFE 标记。唯一状态类：body.next-sidebar-open */
+/* ===== 侧栏：完全照抄新版实现 =====
+   新版的做法极简：nextOpenSidebar() 只切换 body.next-sidebar-open 一个类。
+   切分区调 switchMainTab（新版的 nextGo 内部也是调它）。 */
+function nextOpenSidebar(open){
+  var sidebar = document.getElementById('nextSidebar');
+  if(!sidebar) return;
+  var on = (open === undefined) ? !document.body.classList.contains('next-sidebar-open') : !!open;
+  document.body.classList.toggle('next-sidebar-open', on);
+}
+window.nextOpenSidebar = nextOpenSidebar;
+
+/* 菜单项：新版是 nextGo(tab)，这里换成 switchMainTab，然后收起侧栏 */
+function wbSidebarGo(tab){
+  try{ if(typeof switchMainTab === 'function') switchMainTab(tab); }catch(e){}
+  nextOpenSidebar(false);
+  wbSyncActive();
+}
+window.wbSidebarGo = wbSidebarGo;
+
+/* 点侧栏以外的空白关闭（新版靠遮罩的 onclick，这里额外兜一层） */
 (function(){
-  if(window.__oursSidebarBound) return;
-  window.__oursSidebarBound = 1;
-
-  var TAB_IDS = {
-    gateway:'btnNavGateway', accounts:'btnNavAccounts', tasks:'btnNavTasks',
-    analytics:'btnNavAnalytics', agents:'btnNavAgents',
-    settings:'btnNavSettings', logs:'btnNavLogs'
-  };
-
-  function isOpen(){ return document.body.classList.contains('next-sidebar-open'); }
-
-  function setOpen(open){
-    var on = !!open;
-    document.body.classList.toggle('next-sidebar-open', on);
-    var btn = document.getElementById('nextMenuBtn');
-    if(btn) btn.setAttribute('aria-expanded', on ? 'true' : 'false');
-    var side = document.getElementById('nextSidebar');
-    if(side) side.setAttribute('aria-hidden', on ? 'false' : 'true');
-  }
-
-  window.wbSidebarOpen = setOpen;
-  window.wbSidebarClose = function(){ setOpen(false); };
-  window.wbSidebarToggle = function(){ setOpen(!isOpen()); };
-  window.wbSidebarGo = function(tab){
-    if(typeof window.switchMainTab === 'function'){
-      try{ window.switchMainTab(tab); }catch(e){}
-    }
-    setOpen(false);
-    syncActive();
-  };
-
-  /* 唯一入口：一个 capture 监听覆盖按钮 / 遮罩 / 外部点击 */
+  if(window.__wbSidebarAway) return;
+  window.__wbSidebarAway = 1;
   document.addEventListener('click', function(e){
+    if(!document.body.classList.contains('next-sidebar-open')) return;
     var t = e.target;
     if(!t || !t.closest) return;
-
-    if(t.closest('#nextMenuBtn')){
-      e.preventDefault(); e.stopPropagation();
-      setOpen(!isOpen());
-      return;
-    }
-    if(t.closest('#nextSidebarBackdrop')){
-      e.preventDefault(); e.stopPropagation();
-      setOpen(false);
-      return;
-    }
-    if(isOpen() && !t.closest('#nextSidebar')){
-      setOpen(false);
-    }
+    if(t.closest('#nextSidebar')) return;        /* 侧栏内部不关 */
+    if(t.closest('#nextMenuBtn')) return;        /* ☰ 自己 toggle */
+    nextOpenSidebar(false);
   }, true);
+})();
 
-  document.addEventListener('keydown', function(e){
-    if((e.key === 'Escape' || e.keyCode === 27) && isOpen()) setOpen(false);
-  }, true);
-
-  /* 当前分区高亮：复用主面板页签的 .active，不另存一份状态 */
-  function syncActive(){
-    var btn = document.querySelector('.main-nav-btn.active');
-    var tab = '';
-    if(btn && btn.id){
-      for(var k in TAB_IDS){ if(TAB_IDS[k] === btn.id){ tab = k; break; } }
-    }
-    var items = document.querySelectorAll('#nextNav .next-nav-item');
-    for(var i = 0; i < items.length; i++){
-      items[i].classList.toggle('active', items[i].getAttribute('data-next-tab') === tab);
-    }
+/* 当前分区高亮：跟顶部页签的 .active 同步 */
+function wbSyncActive(){
+  var TAB_IDS = {gateway:'btnNavGateway', accounts:'btnNavAccounts', tasks:'btnNavTasks',
+                 analytics:'btnNavAnalytics', agents:'btnNavAgents',
+                 settings:'btnNavSettings', logs:'btnNavLogs'};
+  var btn = document.querySelector('.main-nav-btn.active');
+  var tab = '';
+  if(btn && btn.id){
+    for(var k in TAB_IDS){ if(TAB_IDS[k] === btn.id){ tab = k; break; } }
   }
+  var items = document.querySelectorAll('#nextNav .next-nav-item');
+  for(var i = 0; i < items.length; i++){
+    items[i].classList.toggle('active', items[i].getAttribute('data-next-tab') === tab);
+  }
+}
+(function(){
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wbSyncActive);
+  } else {
+    wbSyncActive();
+  }
+  setInterval(wbSyncActive, 700);
+})();
 
-  /* ---- 密码门：只同步 ☰ 显隐，永不触碰侧栏状态 ----
-     不用 html.wb-panel-session：WebView 里这个类不一定在预期时刻出现，会误判。
-     看 #panelGate 的实际渲染（computed display + 尺寸）最可靠。
-     判断失败一律当作「门不可见」，所以不会误隐藏 ☰，更不会误关侧栏。 */
-  function gateIsVisible(){
+/* 密码门可见时隐藏 ☰ —— 只隐藏按钮，绝不碰侧栏状态 */
+(function(){
+  function gateVisible(){
     var gate = document.getElementById('panelGate');
     if(!gate) return false;
     try{
       var cs = window.getComputedStyle ? window.getComputedStyle(gate) : null;
       if(!cs || cs.display === 'none') return false;
       return gate.offsetWidth > 0 && gate.offsetHeight > 0;
-    }catch(e){
-      return false;
-    }
+    }catch(e){ return false; }
   }
-
-  function syncGate(){
+  function sync(){
     var btn = document.getElementById('nextMenuBtn');
     if(!btn) return;
-    if(gateIsVisible()){
-      btn.classList.add('next-gate-hidden');
-    }else{
-      btn.classList.remove('next-gate-hidden');
-    }
-    /* 这里没有 setOpen(false)：门可见时 CSS 已把 #panelGate 提到侧栏之上，
-       门会盖住侧栏；侧栏状态保留，登录完成后门消失、侧栏还在原地。 */
+    if(gateVisible()) btn.classList.add('next-gate-hidden');
+    else btn.classList.remove('next-gate-hidden');
   }
-
-  try{
-    new MutationObserver(syncGate).observe(document.documentElement,
-      { attributes:true, attributeFilter:['class'] });
-  }catch(e){}
-  var gateEl = document.getElementById('panelGate');
-  if(gateEl){
-    try{
-      new MutationObserver(syncGate).observe(gateEl,
-        { attributes:true, attributeFilter:['style','class'] });
-    }catch(e){}
-  }
-
-  syncGate();
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', syncGate);
-  }
-  setTimeout(syncGate, 400);
-  setTimeout(syncGate, 1500);
-  setInterval(syncGate, 2000);
-
-  /* 清掉 header-left 里残留的「☰」文本节点 */
-  (function cleanHeaderLeft(){
-    var hl = document.querySelector('header .header-left');
-    if(!hl) return;
-    Array.prototype.slice.call(hl.childNodes).forEach(function(n){
-      if(n.nodeType === 3 && n.nodeValue && n.nodeValue.indexOf('☰') >= 0){
-        n.nodeValue = n.nodeValue.replace(/☰/g, '');
-      }
-    });
-  })();
-
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', syncActive);
-  } else {
-    syncActive();
-  }
-  setInterval(syncActive, 700);
+  sync();
+  document.addEventListener('DOMContentLoaded', sync);
+  setTimeout(sync, 500);
+  setTimeout(sync, 1600);
+  setInterval(sync, 2000);
 })();
 </script>
 </body>
