@@ -843,29 +843,24 @@ button.page-nav-top:hover{background:var(--panel2);border-color:var(--accent);co
      同一行看起来参差不齐。这里把两个 select 统一到 34px、并让两格
      align-items:center，标签与控件在中线上对齐。 */
   table.account-cards td:nth-child(5),
-  table.account-cards td:nth-child(6){order:5;flex-direction:row;align-items:center;
-    justify-content:flex-start;gap:4px;min-width:0;min-height:36px}
-  table.account-cards td:nth-child(5){grid-column:span 3}
-  table.account-cards td:nth-child(6){grid-column:span 3}
-  table.account-cards td:nth-child(6)::before{content:'权重：'}
+  table.account-cards td:nth-child(5){grid-column:span 6}
   table.account-cards td:nth-child(5) .slot-select{width:auto;max-width:none;min-height:34px;height:34px;flex:1 1 auto;min-width:0}
-  table.account-cards td:nth-child(6) .mini-select{min-height:34px;height:34px;padding:0 6px;align-self:center}
   /* 积分（第 7 列）与请求（第 8 列）：各占一半、铺满整行，左右边缘分别与上一行
      的「出口」「权重」对齐；两格等高、内容水平垂直居中。以前各占 1/3 宽，右边
      留空一截，看着像没铺满。 */
-  table.account-cards td:nth-child(7),
-  table.account-cards td:nth-child(8){order:6;grid-column:span 3;
+  table.account-cards td:nth-child(6),
+  table.account-cards td:nth-child(7){order:6;grid-column:span 3;
     flex-direction:column;align-items:center;justify-content:center;gap:2px;
     padding:6px 4px;min-height:48px;
     background:var(--panel2);border-radius:8px;text-align:center}
-  table.account-cards td:nth-child(7) .credit-stack{width:100%;align-items:center}
-  table.account-cards td:nth-child(7) .credit-main,
-  table.account-cards td:nth-child(7) .credit-meta{justify-content:center}
+  table.account-cards td:nth-child(6) .credit-stack{width:100%;align-items:center}
+  table.account-cards td:nth-child(6) .credit-main,
+  table.account-cards td:nth-child(6) .credit-meta{justify-content:center}
   /* 积分格（第 7 列）：column-reverse 会把 ::before 的「积分」列标签排到最底部，
      与「明细」按钮错行。隐藏列标签——PC 版这一格本来就只有数值和「明细」，
      手机上也保持一致，不再额外加一个「积分」字样去挤那一行。 */
-  table.account-cards td:nth-child(7)::before{content:none}
-  table.account-cards td:nth-child(8)::before{font-size:10px}
+  table.account-cards td:nth-child(6)::before{content:none}
+  table.account-cards td:nth-child(7)::before{font-size:10px}
   table.account-cards td.acct-actions{order:7;grid-column:span 6;justify-content:flex-start}
   table.account-cards td.acct-actions::before{content:none}
   table.account-cards .acct-actions-col{flex-direction:row;flex-wrap:wrap;align-items:flex-start;
@@ -5236,35 +5231,56 @@ html, body{
 }
 
 
-/* ===== 手机端：下拉整体铺平（不留折叠、不留滚轮）=====
-   原生 <select> 在手机上是滚轮选择器，要拉、要点、要确认，太难受。
-   这里把它整个藏掉，把**所有选项**直接排出来（.wb-flat 里的按钮组）：
-   一眼看全，点哪个立刻生效，不用展开。
+/* ===== 手机端：下拉整体铺平 + 字号统一收小 =====
+   原生 <select> 在手机上是滚轮选择器，要拉要点要确认，太难受。
+   .wb-flat 把**所有选项**直接排在页面上：一眼看全，点哪个立刻生效。
 
-   只在窄屏生效；桌面宽屏仍是原生下拉。 */
+   关键：.wb-flat 是 inline-flex（不是块级整行），
+   它只是 select 旁边的一段按钮，不新增视觉层级。 */
 @media (max-width:860px){
-  html.wb-flattened select{
-    display:none !important;
-  }
-
+  /* 铺平按钮组：跟着 select 原位，宽了就换行 */
   .wb-flat{
-    display:flex; flex-wrap:wrap; gap:5px;
-    width:100%; margin:2px 0 6px;
+    display:inline-flex;
+    flex-wrap:wrap;
+    gap:4px;
+    vertical-align:middle;
+    max-width:100%;
   }
   .wb-flat button{
     appearance:none; flex:0 0 auto;
-    padding:6px 11px; border-radius:999px;
-    border:1px solid var(--line); background:var(--panel2);
-    color:var(--dim); font:inherit; font-size:11.5px;
-    cursor:pointer; white-space:nowrap;
+    padding:4px 9px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:var(--panel2);
+    color:var(--dim);
+    font:inherit;
+    font-size:11px;
+    line-height:1.35;
+    cursor:pointer;
+    white-space:nowrap;
     -webkit-tap-highlight-color:transparent;
-    transition:background .12s ease, color .12s ease, border-color .12s ease;
   }
-  .wb-flat button:active{ transform:scale(.97); }
   .wb-flat button.on{
-    background:var(--accent-soft); color:var(--accent);
-    border-color:var(--accent); font-weight:600;
+    background:var(--accent-soft);
+    color:var(--accent);
+    border-color:var(--accent);
+    font-weight:600;
   }
+
+  /* ── 全页字号收小：手机上把 13px 的基准压到 12px，标题同步收 ── */
+  html[data-ui="next"] body{ font-size:12px; }
+  html[data-ui="next"] #nextContent > main{ font-size:12px; }
+  html[data-ui="next"] .next-page-intro h1,
+  html[data-ui="next"] main h1{ font-size:18px; }
+  html[data-ui="next"] main h2{ font-size:13px; }
+  html[data-ui="next"] main h3{ font-size:12px; }
+  html[data-ui="next"] button{ font-size:11.5px; }
+  html[data-ui="next"] th,
+  html[data-ui="next"] .next-nav-item span{ font-size:12px; }
+
+  /* 账号卡片：字段名统一小一号，值正常 */
+  table.account-cards td::before{ font-size:10.5px !important; }
+  table.account-cards td{ font-size:11.5px !important; }
 
   /* 折叠块默认展开 */
   details{ open: 1; }
@@ -5278,15 +5294,10 @@ html, body{
     max-height:none !important; overflow:visible !important; display:block !important;
   }
 
-  /* 原来给 .wb-seg 的规则作废（换名了，留着防旧缓存） */
-  .wb-seg{ display:none !important; }
+  /* 自绘下拉残留一律不显示 */
+  .cs-panel, .cs-wrap{ display:none !important; }
 }
 
-
-/* 自绘下拉面板一律不显示：手机上一堆竖排选项既占地方又卡。
-   若将来恢复自绘下拉，把这行删掉即可。 */
-.cs-panel{ display:none !important; }
-.cs-wrap{ display:none !important; }
 </style>
 </head>
 <body>
@@ -11138,8 +11149,7 @@ function accountRow(a){
     + '<td style="text-align:center" data-label="状态">' + state + '</td>'
     + '<td style="text-align:center" data-label="今日活动">' + activityStatusChip(a) + '</td>'
     + '<td style="text-align:center" data-label="出口">' + slotSelectHtml(a) + '</td>'
-    + '<td style="text-align:center;white-space:nowrap" data-label="权重">'
-    +   '<select class="mini-select" title="' + esc(WEIGHT_TIP) + '" onchange="setAccountWeight(&quot;' + uidAttr + '&quot;, this.value, this)">' + weightOpts + '</select></td>'
+/* 权重已移除：手机端不需要 */
     + '<td style="text-align:left;white-space:normal" data-label="积分">' + credText + '</td>'
     + '<td style="text-align:right" data-label="请求">' + fmt(usage.requests) + '</td>'
     + '<td style="text-align:right" data-label="总 token" data-tip="' + fmt(usage.total_tokens) + '">' + fmtCompact(usage.total_tokens) + '</td>'
@@ -22338,62 +22348,57 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
 })();
 </script>
 <script>
-/* 手机端：把每个下拉「整个铺开」—— 所有选项直接排在页面上，点哪个切哪个。
-   不是换成"下拉按钮"，是彻底不留折叠：
-     <select><option>今日</option><option>近7天</option>…</select>
-   →
-     今日 │ 近 7 天(高亮) │ 近 30 天 │ …
-   点任意一项 = 写回 select.value + 派发 change，页面原逻辑一行没改。
-
-   覆盖全页所有 <select>（除标了 data-keep-select 的）。桌面宽屏不处理。 */
+/* 手机端：把每个下拉「整个铺开」——所有选项直接排在页面上，点哪个切哪个。
+   关键：不新增任何容器层级。按钮直接插在 select 元素后面（同一父级），
+   这样不会把父级的 grid/flex 挤乱，也不会看起来"多出一层"。
+   原生 select 用 inline style 藏起来（display:none），change 事件照常派发。 */
 (function(){
   if(window.__wbFlatBound) return;
   window.__wbFlatBound = 1;
 
   function isNarrow(){ return window.innerWidth <= 860; }
 
+  function render(el, wrap){
+    var opts = Array.prototype.map.call(el.options, function(o){
+      return {v:o.value, t:o.textContent};
+    });
+    var sig = opts.map(function(o){ return o.v + ':' + o.t; }).join('|');
+    if(wrap.dataset.sig === sig && wrap.dataset.val === el.value) return;
+    wrap.dataset.sig = sig;
+    wrap.dataset.val = el.value;
+    wrap.innerHTML = '';
+    opts.forEach(function(o){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = (o.v === el.value) ? 'on' : '';
+      b.textContent = o.t;
+      b.onclick = function(){
+        el.value = o.v;
+        wrap.dataset.val = o.v;
+        Array.prototype.forEach.call(wrap.children, function(x){
+          x.className = (x === b) ? 'on' : '';
+        });
+        el.dispatchEvent(new Event('change', {bubbles:true}));
+        el.dispatchEvent(new Event('input', {bubbles:true}));
+      };
+      wrap.appendChild(b);
+    });
+  }
+
   function build(el){
     if(!el || el.dataset.wbKeep === '1') return;
-    var host = el.parentNode;
-    if(!host) return;
-    var box = host.querySelector('.wb-flat[data-for="' + el.id + '"]');
-    if(!box){
-      box = document.createElement('div');
-      box.className = 'wb-flat';
-      box.setAttribute('data-for', el.id);
-      box.setAttribute('role', 'group');
-      box.setAttribute('aria-label', el.getAttribute('aria-label') || '');
-      host.insertBefore(box, el);
-    }
-    function render(){
-      var opts = Array.prototype.map.call(el.options, function(o){
-        return {v:o.value, t:o.textContent};
-      });
-      var sig = opts.map(function(o){ return o.v + ':' + o.t; }).join('|');
-      if(box.dataset.sig === sig && box.dataset.val === el.value) return;
-      box.dataset.sig = sig;
-      box.dataset.val = el.value;
-      box.innerHTML = '';
-      opts.forEach(function(o){
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = (o.v === el.value) ? 'on' : '';
-        b.textContent = o.t;
-        b.onclick = function(){
-          el.value = o.v;
-          box.dataset.val = o.v;
-          Array.prototype.forEach.call(box.children, function(x){
-            x.className = (x === b) ? 'on' : '';
-          });
-          el.dispatchEvent(new Event('change', {bubbles:true}));
-          el.dispatchEvent(new Event('input', {bubbles:true}));
-        };
-        box.appendChild(b);
-      });
-    }
-    render();
-    el.addEventListener('change', render);
-    try{ new MutationObserver(render).observe(el, {childList:true, subtree:true}); }catch(e){}
+    if(el.dataset.wbFlatDone === '1') return;
+    var wrap = document.createElement('span');
+    wrap.className = 'wb-flat';
+    wrap.setAttribute('role', 'group');
+    wrap.setAttribute('aria-label', el.getAttribute('aria-label') || '');
+    // 插在 select 后面，同父级 —— 不新增层级
+    el.parentNode.insertBefore(wrap, el.nextSibling);
+    el.dataset.wbFlatDone = '1';
+    el.style.display = 'none';
+    render(el, wrap);
+    el.addEventListener('change', function(){ render(el, wrap); });
+    try{ new MutationObserver(function(){ render(el, wrap); }).observe(el, {childList:true, subtree:true}); }catch(e){}
   }
 
   function scan(){
@@ -22411,19 +22416,15 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
     });
   }
 
-  function init(){
-    scan();
-    expandAll();
-    document.documentElement.classList.add('wb-flattened');
-  }
+  function init(){ scan(); expandAll(); }
 
   if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', function(){ setTimeout(init, 500); });
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(init, 400); });
   } else {
-    setTimeout(init, 500);
+    setTimeout(init, 400);
   }
-  setTimeout(init, 2000);
-  setTimeout(init, 5000);
+  setTimeout(init, 1800);
+  setTimeout(init, 4000);
 
   try{
     new MutationObserver(function(){ if(isNarrow()) scan(); })
