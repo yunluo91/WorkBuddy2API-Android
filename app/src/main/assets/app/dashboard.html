@@ -11,6 +11,8 @@
      重启导致复核失败时，panelNeedsLogin() 会摘掉这个类把闸门放回屏幕上。
      这里必须 !important：闸门的可见性写在它自己的内联 style 上，普通规则压不住。 -->
 <style>html.wb-panel-session #panelGate{display:none!important}</style>
+<script>/* App 内关闭自绘下拉，改用平铺选项；必须在 cs 增强脚本之前执行 */
+window.__wbNoCustomSelect = true;</script>
 <script>
 /* 面板会话令牌的存储键。全页只在这里定义一次：首帧判定要用它，所以必须先于
    任何页面内容；后面的脚本直接复用这个绑定，不要再写一遍字面量。 */
@@ -5280,6 +5282,11 @@ html, body{
   .wb-seg{ display:none !important; }
 }
 
+
+/* 自绘下拉面板一律不显示：手机上一堆竖排选项既占地方又卡。
+   若将来恢复自绘下拉，把这行删掉即可。 */
+.cs-panel{ display:none !important; }
+.cs-wrap{ display:none !important; }
 </style>
 </head>
 <body>
@@ -21666,6 +21673,10 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
   'use strict';
   if (window.__csEnhanced) return;
   window.__csEnhanced = true;
+  /* 自绘下拉（cs-wrap）在手机上会生成一大片竖排选项面板，既占地方又卡。
+     App 里用不到，直接跳过增强 —— 原生 select 与 change 事件仍保留，
+     视觉由 .wb-flat 铺平接管。桌面宽屏要恢复自绘下拉：删掉下面这行。 */
+  if (window.__wbNoCustomSelect) return;
 
   var openWrap = null;
 
