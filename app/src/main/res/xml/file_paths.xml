@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 更新包下载到 getExternalFilesDir(null)/update.apk，这里开放该目录 -->
+    <external-files-path name="update" path="." />
+    <cache-path name="cache" path="." />
+</paths>

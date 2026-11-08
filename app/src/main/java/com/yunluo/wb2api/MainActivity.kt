@@ -15,6 +15,12 @@ import android.webkit.*
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.yunluo.wb2api.update.UpdateChecker
+import com.yunluo.wb2api.update.UpdateDialogState
+import com.yunluo.wb2api.update.UpdateDialogContent
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -255,6 +261,13 @@ class MainActivity : ComponentActivity() {
      * 同一棵组合树上，天然能拿到 ViewTreeLifecycleOwner，不会再抛。
      */
     private var jsDialog by mutableStateOf<JsDialogState?>(null)
+
+    /* WB-UPDATE 检查更新。
+       状态驱动：检查/下载都在后台线程，结果写进这个 state，
+       Compose 侧看到非空就渲染弹窗。跟 jsDialog 一个套路 ——
+       不放 android.app.Dialog，避免 ViewTreeLifecycleOwner 崩。 */
+    private var updateDialog by mutableStateOf<UpdateDialogState?>(null)
+    @Volatile private var updateChecked = false
 
     /** 工具执行器。网关就绪后建一次，之后复用。 */
     @Volatile private var agentTools: com.yunluo.wb2api.agent.AgentTools? = null
@@ -601,6 +614,47 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            // 更新弹窗：状态驱动，跟主界面同一棵组合树
+            updateDialog?.let { st ->
+                Dialog(
+                    onDismissRequest = {
+                        // 下载中不许随手关掉；没下载时关掉等于「稍后再说」
+                        if (!st.downloading) updateDialog = null
+                    },
+                    properties = DialogProperties(
+                        usePlatformDefaultWidth = false,
+                        dismissOnBackPress = !st.downloading,
+                        dismissOnClickOutside = false
+                    )
+                ) {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                        UpdateDialogContent(
+                            state = st,
+                            onBrowserDownload = {
+                                try {
+                                    UpdateChecker.openInBrowser(this@MainActivity, st.apkUrl)
+                                } catch (_: Throwable) {}
+                            },
+                            onUpdate = {
+                                st.buttonsEnabled = false
+                                st.downloading = true
+                                st.progressKnown = true
+                                st.progress = 0
+                                startApkDownload(st)
+                            },
+                            onIgnore = {
+                                UpdateChecker.ignore(
+                                    this@MainActivity,
+                                    st.versionLabel.removePrefix("v")
+                                )
+                                updateDialog = null
+                            }
+                        )
+                    }
+                }
+            }
+
+
             // JS 对话框：跟主界面在同一棵组合树里，不走独立 Dialog
             jsDialog?.let { dlg ->
                 WbJsDialog(
@@ -659,7 +713,14 @@ class MainActivity : ComponentActivity() {
         // 必须等网关确认可用之后才 loadUrl。
         // 绑到 booting 上：booting 变 false 说明 healthy() 探到
         // /health 和 / 都 200，这时候端口一定在听。
+
+        // 进主界面后自动检查一次更新（3 分钟内不重复）
         LaunchedEffect(booting) {
+            if (booting) return@LaunchedEffect
+            maybeAutoCheckUpdate()
+        }
+        LaunchedEffect(booting) {
+
             web = holder.web
             if (booting) return@LaunchedEffect
             if (holder.web.url == null) holder.web.loadUrl(loginUrl())
@@ -1189,6 +1250,93 @@ class MainActivity : ComponentActivity() {
      * 先把旧的结掉（cancel），否则那个 JsResult 永远悬着，
      * WebView 那边会一直等，页面后面的脚本全都不执行。
      */
+    // ──────────────────────── WB-UPDATE 检查更新 ────────────────────────
+
+    /**
+     * 检查更新。
+     *
+     * @param forceShow 用户主动点「检查更新」时传 true —— 已是最新会提示，
+     *                  之前的「忽略此版本」也失效
+     */
+    private fun checkAppUpdate(forceShow: Boolean) {
+        io.execute {
+            val local = BuildConfig.VERSION_NAME
+            val result = UpdateChecker.check(this@MainActivity, local, allowIgnored = forceShow)
+            runOnUiThread {
+                when (result) {
+                    is UpdateChecker.Result.Available -> {
+                        updateDialog = UpdateDialogState(
+                            versionLabel = "v" + result.version,
+                            contentText = result.content,
+                            apkUrl = result.apkUrl,
+                        )
+                    }
+                    is UpdateChecker.Result.UpToDate -> {
+                        if (forceShow) toast("已是最新版本（" + local + "）")
+                    }
+                    is UpdateChecker.Result.Ignored -> {
+                        // 自动检查时静默跳过；用户主动问的话告诉他被忽略了
+                        if (forceShow) toast("这个版本已忽略过")
+                    }
+                    is UpdateChecker.Result.Failed -> {
+                        if (forceShow) toast("检查更新失败：" + result.reason)
+                        // 自动检查失败保持静默 —— 没必要因为没网去烦用户
+                    }
+                }
+            }
+        }
+    }
+
+    /** 三分钟只自动检查一次，避免反复进出页面时刷请求。 */
+    @Volatile private var lastAutoUpdateCheckMs = 0L
+
+    private fun maybeAutoCheckUpdate() {
+        val now = System.currentTimeMillis()
+        if (now - lastAutoUpdateCheckMs < 3 * 60 * 1000L) return
+        lastAutoUpdateCheckMs = now
+        if (updateDialog != null) return
+        checkAppUpdate(false)
+    }
+
+    /** 下载更新包。进度写回 state，完成后调系统安装器。 */
+    private fun startApkDownload(st: UpdateDialogState) {
+        io.execute {
+            try {
+                val file = UpdateChecker.download(
+                    this,
+                    st.apkUrl
+                ) { fraction ->
+                    runOnUiThread {
+                        if (fraction >= 0f) {
+                            st.progressKnown = true
+                            st.progress = (fraction * 100f).toInt().coerceIn(0, 100)
+                        } else {
+                            st.progressKnown = false
+                        }
+                    }
+                }
+                runOnUiThread {
+                    st.downloading = false
+                    st.buttonsEnabled = true
+                    updateDialog = null
+                    try {
+                        UpdateChecker.install(this, file)
+                    } catch (e: Throwable) {
+                        toast("打开安装器失败：" + (e.message ?: "未知错误"))
+                    }
+                }
+            } catch (e: Throwable) {
+                runOnUiThread {
+                    st.downloading = false
+                    st.buttonsEnabled = true
+                    st.progressKnown = true
+                    st.progress = 0
+                    toast("下载失败：" + (e.message ?: "未知错误"))
+                }
+            }
+        }
+    }
+
     private fun showJsDialog(
         kind: JsDialogKind,
         title: String,
@@ -2839,7 +2987,7 @@ class MainActivity : ComponentActivity() {
     // ---------------------------------------------------------------- 菜单
 
     private fun showMenu(anchor: View) {
-        val items = arrayOf("复制 Key", "设置", "日志", "电池优化", "关于", "刷新")
+        val items = arrayOf("复制 Key", "设置", "日志", "电池优化", "关于", "检查更新", "刷新")
         android.widget.PopupMenu(this, anchor).apply {
             items.forEachIndexed { i, s -> menu.add(0, i, i, s) }
             setOnMenuItemClickListener { item ->
@@ -2849,7 +2997,8 @@ class MainActivity : ComponentActivity() {
                     2 -> showLogs()
                     3 -> openBatterySettings()
                     4 -> showAbout()
-                    5 -> { web?.reload(); webTool?.reload() }
+                    5 -> checkAppUpdate(true)
+                    6 -> { web?.reload(); webTool?.reload() }
                 }
                 true
             }

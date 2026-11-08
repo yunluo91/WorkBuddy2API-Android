@@ -1,0 +1,5 @@
+{
+  "version": "2.0.0-app187",
+  "content": "1. 新增「检查更新」：进主界面自动检查，长按菜单也能手动查\n2. 侧栏「仓库」指向自有仓库\n3. 侧栏品牌区：应用图标 + WorkBuddyAPI / 陨落洛杉矶高级二改王\n4. 侧栏三个入口（仓库 / 日志窗口 / 关闭网关）挪到顶部横排\n5. 手机端：禁止左右拖动、上下滑不再切掉顶栏底栏\n6. 账号卡片纵向压缩；模型清单两列；用量页 KPI 三列\n7. 所有下拉改成平铺选项（不再用手机滚轮选择器）\n8. 「API 等价」卡片换成「积分消耗」，只显示整数",
+  "url": "https://github.com/yunluo91/WorkBuddy2API-Android/releases/latest/download/WorkBuddyAPI.apk"
+}
