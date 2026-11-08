@@ -5581,6 +5581,53 @@ html, body{
     stroke-width:2.4 !important;
   }
 }
+
+/* ===== 侧栏顶部：仓库 / 日志窗口 / 关闭网关 三个小入口 =====
+   原来贴在侧栏最底部，手机上紧挨 App 底栏，容易误触（尤其是「关闭网关」）。
+   现在挪到品牌区下面，横排一行小图标按钮。 */
+@media (max-width:860px){
+  #nextSidebar .next-brand-links{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:5px !important;
+    padding:0 8px 10px !important;
+    margin:0 !important;
+    border-bottom:1px solid var(--line) !important;
+  }
+  #nextSidebar .next-brand-links .next-side-link{
+    flex:0 0 auto !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    gap:4px !important;
+    padding:5px 9px !important;
+    border-radius:999px !important;
+    border:1px solid var(--line) !important;
+    background:var(--panel2) !important;
+    color:var(--dim) !important;
+    font-size:10.5px !important;
+    line-height:1.2 !important;
+    white-space:nowrap !important;
+    text-decoration:none !important;
+    cursor:pointer !important;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #nextSidebar .next-brand-links .next-side-link svg{
+    width:12px !important;
+    height:12px !important;
+    flex:0 0 12px !important;
+    opacity:.8;
+  }
+  #nextSidebar .next-brand-links .next-side-link:active{
+    background:var(--panel3,var(--panel2)) !important;
+  }
+  /* 「关闭网关」用红色标出来，别误点 */
+  #nextSidebar .next-brand-links .next-side-danger{
+    color:var(--bad,#e5534b) !important;
+    border-color:rgba(229,83,75,.4) !important;
+  }
+  /* 挪走后底部不再需要那块空间 */
+  html[data-ui="next"] .next-sidebar-foot{ display:none !important; }
+}
 </style>
 </head>
 <body>
@@ -5710,6 +5757,20 @@ html, body{
     <div class="next-brand">
       <div class="next-brand-mark" style="background:transparent;padding:0;overflow:hidden"><img src="data:image/png;base64,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" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit"></div>
       <div class="next-brand-text"><b>陨落</b><span>洛杉矶高级二改王</span></div>
+    <div class="next-brand-links">
+      <a class="next-side-link" href="https://github.com/ardeyouxipianyi/workbuddy2api-hub" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        WorkBuddy 仓库
+      </a>
+      <button type="button" class="next-side-link" onclick="toggleConsoleWindow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9l3 3-3 3M12.5 15H17"/></svg>
+        运行日志窗口
+      </button>
+      <button type="button" class="next-side-link next-side-danger" onclick="shutdownGateway()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/></svg>
+        关闭网关
+      </button>
+    </div>
     </div>
     <div class="next-nav-label">工作台</div>
     <nav class="next-nav" id="nextNav">
@@ -5750,21 +5811,7 @@ html, body{
         <span>日志</span>
       </button>
     </nav>
-    <div class="next-sidebar-foot">
-      <a class="next-side-link" href="https://github.com/ardeyouxipianyi/workbuddy2api-hub" target="_blank" rel="noopener noreferrer">
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        WorkBuddy 仓库
-      </a>
-      <button type="button" class="next-side-link" onclick="toggleConsoleWindow()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9l3 3-3 3M12.5 15H17"/></svg>
-        运行日志窗口
-      </button>
-      <button type="button" class="next-side-link next-side-danger" onclick="shutdownGateway()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/></svg>
-        关闭网关
-      </button>
-      <div class="next-side-status"><span class="next-status-dot"></span> 网关运行中</div>
-    </div>
+    
   </aside>
   <div id="nextSidebarBackdrop" class="next-sidebar-backdrop" onclick="nextOpenSidebar(false)"></div>
   <div id="nextMain">
