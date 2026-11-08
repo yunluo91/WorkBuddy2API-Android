@@ -5582,17 +5582,55 @@ html, body{
   }
 }
 
-/* ===== 侧栏顶部：仓库 / 日志窗口 / 关闭网关 三个小入口 =====
-   原来贴在侧栏最底部，手机上紧挨 App 底栏，容易误触（尤其是「关闭网关」）。
-   现在挪到品牌区下面，横排一行小图标按钮。 */
+/* ===== 侧栏顶部：品牌 + 三个入口，全部横排 =====
+   品牌区（图标 + 名字）占一行，三个入口另起一行横排。
+   关键：任何一项都不许换行、不许被压窄 —— 否则中文会竖排。 */
 @media (max-width:860px){
+  /* 品牌整体：图标 + 文字 一行；入口行另起 */
+  #nextSidebar .next-brand{
+    display:flex !important;
+    flex-wrap:wrap !important;      /* 让下面的入口行能掉到第二行 */
+    align-items:center !important;
+    gap:8px !important;
+    padding:2px 8px 10px !important;
+  }
+  /* 图标 */
+  #nextSidebar .next-brand-mark{
+    flex:0 0 34px !important;
+    width:34px !important;
+    height:34px !important;
+  }
+  /* 名字块：可收缩，但文字绝不竖排 */
+  #nextSidebar .next-brand-text{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    max-width:calc(100% - 42px) !important;
+  }
+  #nextSidebar .next-brand-text b{
+    display:block !important;
+    font-size:14px !important;
+    white-space:nowrap !important;      /* 名字单行 */
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+  #nextSidebar .next-brand-text span{
+    display:block !important;
+    font-size:10px !important;
+    white-space:nowrap !important;      /* 副标题也单行，超长省略 */
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  /* 三个入口：独占一整行，横排 */
   #nextSidebar .next-brand-links{
+    flex:0 0 100% !important;
+    width:100% !important;
     display:flex !important;
     flex-wrap:wrap !important;
     gap:5px !important;
-    padding:0 8px 10px !important;
-    margin:0 !important;
-    border-bottom:1px solid var(--line) !important;
+    margin:6px 0 0 !important;
+    padding:0 !important;
+    border-bottom:0 !important;
   }
   #nextSidebar .next-brand-links .next-side-link{
     flex:0 0 auto !important;
@@ -5606,7 +5644,8 @@ html, body{
     color:var(--dim) !important;
     font-size:10.5px !important;
     line-height:1.2 !important;
-    white-space:nowrap !important;
+    white-space:nowrap !important;      /* 文字永不断字 */
+    word-break:keep-all !important;
     text-decoration:none !important;
     cursor:pointer !important;
     -webkit-tap-highlight-color:transparent;
@@ -5617,17 +5656,21 @@ html, body{
     flex:0 0 12px !important;
     opacity:.8;
   }
-  #nextSidebar .next-brand-links .next-side-link:active{
-    background:var(--panel3,var(--panel2)) !important;
-  }
-  /* 「关闭网关」用红色标出来，别误点 */
   #nextSidebar .next-brand-links .next-side-danger{
     color:var(--bad,#e5534b) !important;
     border-color:rgba(229,83,75,.4) !important;
   }
-  /* 挪走后底部不再需要那块空间 */
+  /* 入口行下面加一条分隔线，跟「工作台」分开 */
+  #nextSidebar .next-brand-links::after{
+    content:'';
+    flex:0 0 100%;
+    height:1px;
+    background:var(--line);
+    margin-top:6px;
+  }
   html[data-ui="next"] .next-sidebar-foot{ display:none !important; }
 }
+
 </style>
 </head>
 <body>
@@ -5760,11 +5803,11 @@ html, body{
     <div class="next-brand-links">
       <a class="next-side-link" href="https://github.com/ardeyouxipianyi/workbuddy2api-hub" target="_blank" rel="noopener noreferrer">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        WorkBuddy 仓库
+        仓库
       </a>
       <button type="button" class="next-side-link" onclick="toggleConsoleWindow()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9l3 3-3 3M12.5 15H17"/></svg>
-        运行日志窗口
+        日志窗口
       </button>
       <button type="button" class="next-side-link next-side-danger" onclick="shutdownGateway()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/></svg>
