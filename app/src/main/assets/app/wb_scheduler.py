@@ -477,7 +477,7 @@ class Scheduler:
             if idx > 0:
                 # 账号间随机错峰防并发风控（2~5秒浮动延时，issue #394）
                 # 后台排程间隔拉长到 20~120 秒：同一出口 IP 上多个账号短间隔连续活动
-                # 是最典型的机械节拍特征（2026-10-24 有 6 个号 3 分钟内全被 11146 限制的记录）。
+                # 是最典型的机械节拍特征（2026-10-24 有 6 个号 3 分钟内全被限制的记录）。
                 # 手动触发仍是 2~5 秒，点了要立刻出结果。
                 time.sleep(random.uniform(20.0, 120.0) if background else random.uniform(2.0, 5.0))
             uid8 = acc.uid[:8] if acc.uid else "?"
