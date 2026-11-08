@@ -5633,27 +5633,31 @@ html, body{
     border-bottom:0 !important;
   }
   #nextSidebar .next-brand-links .next-side-link{
-    flex:0 0 auto !important;
+    flex:1 1 auto !important;           /* 三项平分整行，不留半截 */
+    min-width:0 !important;
+    justify-content:center !important;
     display:inline-flex !important;
     align-items:center !important;
-    gap:4px !important;
-    padding:5px 9px !important;
+    gap:3px !important;
+    padding:5px 6px !important;
     border-radius:999px !important;
     border:1px solid var(--line) !important;
     background:var(--panel2) !important;
     color:var(--dim) !important;
-    font-size:10.5px !important;
+    font-size:10px !important;
     line-height:1.2 !important;
-    white-space:nowrap !important;      /* 文字永不断字 */
+    white-space:nowrap !important;
     word-break:keep-all !important;
     text-decoration:none !important;
     cursor:pointer !important;
     -webkit-tap-highlight-color:transparent;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
   }
   #nextSidebar .next-brand-links .next-side-link svg{
-    width:12px !important;
-    height:12px !important;
-    flex:0 0 12px !important;
+    width:11px !important;
+    height:11px !important;
+    flex:0 0 11px !important;
     opacity:.8;
   }
   #nextSidebar .next-brand-links .next-side-danger{
