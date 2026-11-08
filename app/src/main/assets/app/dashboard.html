@@ -20924,7 +20924,11 @@ function renderKpis(){
 
     // ⑥ 积分消耗（主数值显示积分；金额降级为副行的参考）
     const usd = a.usd_cny ? w.cost_cny / a.usd_cny : null;
-    $('kCost').innerHTML = '<span style="color:var(--fg)">' + numSpan(w.credit, 2) + '</span>';
+    // 只显示整数（不带小数），千分位分开；积分是整数账目，小数没意义。
+    var _creditInt = (w.credit == null || !isFinite(w.credit)) ? null : Math.round(w.credit);
+    $('kCost').innerHTML = '<span style="color:var(--fg)">'
+      + (_creditInt == null ? '—' : _creditInt.toLocaleString('zh-CN'))
+      + '</span>';
     $('kCostSub').innerHTML = (w.cost_cny != null && PRICING_ON)
       ? ('折合 ' + fmtCostCny(w.cost_cny) + (usd != null ? ' · $' + usd.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}) : ''))
       : '按上游实际扣减的积分统计';
