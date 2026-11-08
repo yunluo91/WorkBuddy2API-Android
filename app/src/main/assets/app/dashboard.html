@@ -5563,6 +5563,24 @@ html, body{
   #pageAnalytics .kpi .k{ font-size:8.5px !important; }
 }
 
+
+/* ===== 左上角 ☰ 放大 =====
+   原来按钮 34px、里面图标只有 16px —— 手机上又小又难点。
+   放大成按钮 42px、图标 22px，线条也加粗一点。
+   只动这一个按钮，其他图标按钮不变。 */
+@media (max-width:860px){
+  html[data-ui="next"] #nextMenuBtn{
+    width:42px !important;
+    height:42px !important;
+    flex:0 0 42px !important;
+    border-radius:11px !important;
+  }
+  html[data-ui="next"] #nextMenuBtn svg{
+    width:22px !important;
+    height:22px !important;
+    stroke-width:2.4 !important;
+  }
+}
 </style>
 </head>
 <body>
