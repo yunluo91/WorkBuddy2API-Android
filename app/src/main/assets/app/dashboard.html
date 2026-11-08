@@ -22316,6 +22316,13 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
   window.addEventListener('scroll', function(){
     if (openWrap) positionPanel(openWrap);
   }, true);
+  // WB-SCROLLBOX 同上：#nextContent 才是手机上的滚动容器
+  (function(){
+    var box = document.getElementById('nextContent');
+    if(box) box.addEventListener('scroll', function(){
+      if (openWrap) positionPanel(openWrap);
+    }, true);
+  })();
 
   function boot(){
     scan(document);
@@ -22840,6 +22847,99 @@ if (typeof SORT_DENY_TABLES !== 'undefined' && SORT_DENY_TABLES && SORT_DENY_TAB
       else document.body.classList.remove('next-sidebar-open');
     }
   }, true);
+})();
+</script>
+<script>
+/* ===== 手机上「区块导航」点了不滚动 =====
+   原来的 scrollToPageSection / scrollPageToTop 用的是 window.scrollTo，
+   读的是 window.pageYOffset。
+
+   但窄屏下我们为了「上下滑不再把顶栏底栏切成一半」，把
+   html/body 设成 height:100dvh + overflow:hidden，
+   真正的滚动容器变成了 #nextContent（overflow-y:auto）。
+
+   于是 window 根本不滚 —— 点导航看上去毫无反应。
+
+   这里包一层：优先用真正的滚动容器；拿不到就退回 window。
+   同时把「滚动到某区块」与「回到顶部」两个动作都接管。 */
+(function(){
+  if(window.__wbScrollFix) return;
+  window.__wbScrollFix = 1;
+
+  function scroller(){
+    var el = document.getElementById('nextContent');
+    if(el && el.scrollHeight > el.clientHeight + 2) return el;
+    return null;   // null = 用 window
+  }
+
+  function navOffset(page){
+    // 区块导航是 sticky 在内容区顶部，滚过去要给它的高度留空
+    try{
+      if(typeof pageNavHeaderOffset === 'function') return pageNavHeaderOffset(page) || 0;
+    }catch(e){}
+    var nav = page && page.querySelector ? page.querySelector('.page-nav') : null;
+    return nav ? (nav.offsetHeight || 0) : 0;
+  }
+
+  function scrollToEl(el, offset, smooth){
+    if(!el) return;
+    var box = scroller();
+    if(box){
+      var top = el.offsetTop - offset;
+      // offsetTop 是相对 offsetParent；逐层累加到滚动容器
+      var node = el;
+      top = 0;
+      while(node && node !== box){
+        top += node.offsetTop || 0;
+        node = node.offsetParent;
+      }
+      box.scrollTo({ top: Math.max(0, top - offset), behavior: smooth === false ? 'auto' : 'smooth' });
+    }else{
+      var y = el.getBoundingClientRect().top + window.pageYOffset - offset;
+      window.scrollTo({ top: Math.max(0, y), behavior: smooth === false ? 'auto' : 'smooth' });
+    }
+  }
+
+  // 接管「点区块导航」
+  window.scrollToPageSection = function(page, id, smooth){
+    var section = document.getElementById(id);
+    if(!section) return;
+    scrollToEl(section, navOffset(page), smooth);
+    try{ if(typeof setActivePageNav === 'function') setActivePageNav(page, id); }catch(e){}
+    try{ if(typeof pageNavLock !== 'undefined') pageNavLock = Date.now() + 700; }catch(e){}
+    section.classList.add('page-nav-flash');
+    setTimeout(function(){ section.classList.remove('page-nav-flash'); }, 900);
+    try{
+      var url = new URL(window.location.href);
+      url.hash = id;
+      history.replaceState(null, '', url.toString());
+    }catch(e){}
+  };
+
+  // 接管「回到顶部」
+  window.scrollPageToTop = function(page){
+    var box = scroller();
+    if(box) box.scrollTo({ top: 0, behavior: 'smooth' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
+    try{ if(typeof pageNavLock !== 'undefined') pageNavLock = Date.now() + 700; }catch(e){}
+    try{
+      var first = page ? page.querySelector('.page-nav-item') : null;
+      if(first && typeof setActivePageNav === 'function') setActivePageNav(page, first.dataset.target);
+    }catch(e){}
+    try{
+      var url = new URL(window.location.href);
+      history.replaceState(null, '', url.pathname + url.search);
+    }catch(e){}
+  };
+
+  /* 区块导航的高亮跟随：它原来监听 window scroll，现在要听内容区 */
+  var box = document.getElementById('nextContent');
+  if(box && !box.dataset.wbScrollHooked){
+    box.dataset.wbScrollHooked = '1';
+    box.addEventListener('scroll', function(){
+      try{ if(typeof pageNavSpy === 'function') pageNavSpy(); }catch(e){}
+    }, { passive: true });
+  }
 })();
 </script>
 </body>
