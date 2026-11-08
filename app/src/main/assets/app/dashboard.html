@@ -5500,6 +5500,44 @@ html, body{
     min-height:30px !important;
   }
 }
+
+/* ===== 手机端：用量页 KPI 恢复成两列（照旧版密度）=====
+   现状：新版在 ≤860px 排两列，但 ≤520px 又压成 1 列 ——
+   手机上（多数是 360~430px）落到 1 列，一张卡占满整行，
+   比旧版稀太多。旧版是 2 列。
+
+   这里把 ≤520px 那条覆盖回两列，并收紧卡片内边距与字号间距。
+   放最后 + !important，压过前面所有 media 里的设定。 */
+@media (max-width:860px){
+  #pageAnalytics .kpis,
+  html[data-ui="next"] #pageAnalytics .kpis{
+    grid-template-columns:1fr 1fr !important;
+    gap:6px !important;
+    margin-bottom:8px !important;
+  }
+  /* 卡片内边距收紧，数值不缩 */
+  #pageAnalytics .kpi,
+  html[data-ui="next"] #pageAnalytics .kpi{
+    padding:7px 9px 6px !important;
+    border-radius:9px !important;
+  }
+  #pageAnalytics .kpi .k{ font-size:9.5px !important; }
+  #pageAnalytics .kpi .v{ font-size:17px !important; margin-top:2px !important; }
+  #pageAnalytics .kpi .s{ font-size:10px !important; line-height:1.3 !important; }
+  /* 偶数个卡时不留半行空位；奇数个最后一张占满整行 */
+  #pageAnalytics .kpi.big{ grid-column:auto !important; }
+}
+
+/* 最窄的那档（≤400px）也保持两列，不退回一列 */
+@media (max-width:400px){
+  #pageAnalytics .kpis,
+  html[data-ui="next"] #pageAnalytics .kpis{
+    grid-template-columns:1fr 1fr !important;
+    gap:5px !important;
+  }
+  #pageAnalytics .kpi{ padding:6px 8px 5px !important; }
+  #pageAnalytics .kpi .v{ font-size:16px !important; }
+}
 </style>
 </head>
 <body>
