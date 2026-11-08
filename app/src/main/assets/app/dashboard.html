@@ -6413,7 +6413,7 @@ html, body{
       <canvas class="spark" id="sparkCache"></canvas>
     </div>
     <div class="kpi big">
-      <div class="k"><span class="ic">¥</span>API 等价</div>
+      <div class="k"><span class="ic">◈</span>积分消耗</div>
       <div class="v" id="kCost">—</div>
       <div class="kdelta"><span class="delta" id="deltaCost"></span></div>
       <div class="s" id="kCostSub">—</div>
@@ -20922,11 +20922,12 @@ function renderKpis(){
   $('kCache').innerHTML = fmtPct(w.cache_hit_pct);
   $('kCacheSub').innerHTML = `缓存复用 <b>${numSpan(w.cached_tokens)}</b> tokens`;
 
-  // ⑥ 花费
-  const usd = a.usd_cny ? w.cost_cny / a.usd_cny : null;
-  $('kCost').innerHTML = `<span style="color:var(--red)" ${w.cost_cny != null ? `data-tip="${fullNum(w.cost_cny, 4)} 元"` : ''}>${fmtCostCny(w.cost_cny)}</span>`;
-  $('kCostSub').innerHTML = usd != null ? `<span style="color:var(--green)">${usd.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})}</span> · 积分消耗 ${numSpan(w.credit, 1)}` : '—';
-
+    // ⑥ 积分消耗（主数值显示积分；金额降级为副行的参考）
+    const usd = a.usd_cny ? w.cost_cny / a.usd_cny : null;
+    $('kCost').innerHTML = '<span style="color:var(--fg)">' + numSpan(w.credit, 2) + '</span>';
+    $('kCostSub').innerHTML = (w.cost_cny != null && PRICING_ON)
+      ? ('折合 ' + fmtCostCny(w.cost_cny) + (usd != null ? ' · $' + usd.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}) : ''))
+      : '按上游实际扣减的积分统计';
   $('pageSub').textContent = `区间 ${fmtCompact(w.total_tokens)} tokens · ${fmtCompact(w.requests)} 次请求 · 更新于 ${new Date().toLocaleTimeString('zh-CN', {hour12:false})}`;
 
   // B 版：环比徽章
