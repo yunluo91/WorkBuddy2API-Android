@@ -336,7 +336,7 @@ def _page():
      · 说明文字挪进 <details>，要看才点开
    配色沿用控制台那套变量，两页看起来是一个应用。 */
 :root{--bg:#0e1116;--card:#161b22;--card2:#1c232c;--line:#232a33;
---fg:#e6edf3;--dim:#8b949e;--accent:#0dbd8b;--warn:#f0883e}
+--fg:#e6edf3;--dim:#8b949e;--accent:#8b7fd4;--accent2:#0dbd8b;--warn:#d9b25f}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);
 font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;
@@ -580,7 +580,11 @@ load(); setInterval(load,3000);
   if (s) s.style.display = 'none';
   var w = document.getElementById('wrap');
   if (w) { w.style.maxWidth = 'none'; w.style.padding = '0'; }
+  // 嵌进去时 html / body 都要透明，否则 iframe 文档的默认白底会露出来
+  document.documentElement.style.background = 'transparent';
   document.body.style.background = 'transparent';
+  // 让表单控件、滚动条等原生部件也走深色
+  document.documentElement.style.colorScheme = 'dark';
 })();
 </script>
 </body></html>"""
@@ -621,7 +625,7 @@ EMBED_JS = r"""
       '<iframe id="wbThinkFrame" src="http://127.0.0.1:__CTLPORT__/?embed=1" ' +
         'allow="clipboard-write" ' +
         'style="width:100%;height:520px;border:0;border-radius:12px;' +
-        'background:var(--panel);display:block"></iframe>' +
+        'background:var(--panel);display:block;color-scheme:dark"></iframe>' +
       '<div id="wbThinkFallback" style="display:none;font-size:12px;color:var(--dim);' +
         'margin-top:8px">iframe 被拦的话，直接开 ' +
         '<a href="http://127.0.0.1:__CTLPORT__/?embed=1" target="_blank" ' +
